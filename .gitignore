@@ -69,9 +69,3 @@ Thumbs.db
 
 # Other (add specific files if needed)
 
-# Existing content from user's file (if any)
-# (Ensure previous lines are preserved if the edit mode appends)
-node_modules
-*.node
-/ParsecCore/build
-/ParsecCore/build/_deps

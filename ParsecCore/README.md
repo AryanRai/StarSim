@@ -124,3 +124,71 @@ The engine expects configuration files like `tests/test_model.starmodel.json`:
 *   Create `IPlatform` implementations for other targets (Teensy, Linux).
 *   Integrate `MLCore` (e.g., ONNX Runtime).
 *   Refine error handling and reporting. 
+
+## ROS 2 Integration (Example)
+
+`ParsecCore` is designed to be embedded within other applications, including ROS 2 nodes. Here's a general approach to wrap `ParsecCore` in a ROS 2 node:
+
+1.  **Create a ROS 2 Package:**
+    *   In your ROS 2 workspace's `src` directory, create a new package (e.g., `parsec_ros`):
+        ```bash
+        # cd ~/your_ros2_ws/src
+        ros2 pkg create --build-type ament_cmake parsec_ros --dependencies rclcpp std_msgs # Add other needed msgs
+        ```
+
+2.  **Include ParsecCore Source:**
+    *   Place the entire `ParsecCore` project directory inside the new `parsec_ros` package (e.g., `parsec_ros/ParsecCore/`).
+    *   Using a **Git submodule** is recommended for easier updates:
+        ```bash
+        # cd ~/your_ros2_ws/src/parsec_ros
+        # git submodule add <your_parsec_core_repo_url> ParsecCore
+        ```
+    *   **(Optional) Modify `ParsecCore/CMakeLists.txt`:** Consider changing `ParsecCore` to build as a library (`parsec_core_lib`) instead of an executable when included as a subdirectory. You can use `if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)` to conditionally build executables like `parsec_windows_app` only when `ParsecCore` is the top-level project.
+
+3.  **Modify `parsec_ros/CMakeLists.txt`:**
+    *   Use `find_package` for ROS 2 dependencies (`rclcpp`, etc.).
+    *   Add the `ParsecCore` subdirectory:
+        ```cmake
+        add_subdirectory(ParsecCore)
+        ```
+    *   Define your ROS node executable (`add_executable(parsec_node ...)`).
+    *   Link the node against the `ParsecCore` library target (e.g., `parsec_core_lib`) and ROS libraries:
+        ```cmake
+        target_link_libraries(parsec_node PRIVATE parsec_core_lib) 
+        ament_target_dependencies(parsec_node PRIVATE rclcpp std_msgs)
+        ```
+    *   Install the node executable.
+
+4.  **Implement `RosPlatform`:**
+    *   Create `ros_platform.h/.cpp` within `parsec_ros/src`.
+    *   Define `class RosPlatform : public parsec::IPlatform`.
+    *   Implement `log()` using `RCLCPP_INFO` (pass the node's logger).
+    *   Implement `getMillis()` using `node->get_clock()->now().seconds() * 1000.0` or similar.
+
+5.  **Create ROS 2 Node (`parsec_node.cpp`):**
+    *   Include necessary headers (`rclcpp/rclcpp.hpp`, `ParsecCore.h`, `ros_platform.h`).
+    *   Create a class inheriting from `rclcpp::Node`.
+    *   In the constructor:
+        *   Instantiate `RosPlatform` with the node's logger.
+        *   Instantiate `ParsecCore` using the `RosPlatform` instance.
+        *   Declare and get parameters (e.g., the path to the `.starmodel.json` file).
+        *   Call `core.loadModel()`.
+        *   Create ROS **Subscribers** for topics corresponding to `INPUT` variables in your model. The callbacks should update the simulation state (you might need to add a method like `core.setInputVariable()` to `ParsecCore`).
+        *   Create ROS **Publishers** for simulation results (e.g., variables listed in the `outputs` section of the model file).
+        *   Create an `rclcpp::Timer` to call a loop function at a desired rate.
+    *   In the timer callback function:
+        *   Call `core.tick()`.
+        *   Get the current state using `core.getCurrentState()`.
+        *   Publish the relevant state variables.
+    *   Add the standard ROS 2 `main` function to initialize `rclcpp` and spin the node.
+
+6.  **Build and Run:**
+    *   Build your ROS 2 workspace (`colcon build ...`).
+    *   Source the workspace (`source install/setup.bash`).
+    *   Run the node, passing the model file path as a parameter:
+        ```bash
+        ros2 run parsec_ros parsec_node --ros-args -p model_file_path:="/path/to/your/model.starmodel.json"
+        ```
+    *   Use standard ROS 2 tools (`ros2 topic echo`, `rqt_plot`, etc.) to interact with the node.
+
+This provides a robust way to integrate `ParsecCore`'s simulation capabilities into the larger ROS 2 ecosystem. 

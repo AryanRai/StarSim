@@ -1,0 +1,25 @@
+{
+  "model_name": "TestSpringMass",
+  "version": "1.1",
+  "metadata": {
+    "author": "Test User",
+    "description": "A simple test model"
+  },
+  "variables": [
+    { "name": "x", "unit": "m", "type": "dynamic", "initial": 0.5 },
+    { "name": "v", "unit": "m/s", "type": "dynamic", "initial": 0.0 },
+    { "name": "m", "unit": "kg", "type": "constant", "value": 2.0 },
+    { "name": "k", "unit": "N/m", "type": "constant", "value": 10.0 },
+    { "name": "F_ext", "unit": "N", "type": "input", "placeholder": "external_force_stream" }
+  ],
+  "equations": [
+    "d(v)/dt = (-k * x + F_ext) / m",
+    "d(x)/dt = v"
+  ],
+  "solver": {
+    "method": "Euler",
+    "dt": 0.001,
+    "duration": 5.0
+  },
+  "outputs": ["x", "v"]
+} 

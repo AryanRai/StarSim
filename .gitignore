@@ -1,0 +1,77 @@
+/ParsecCore/build
+
+# CMake generated files and build directories
+[Bb]uild*/
+build*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+*.cmake.in
+*.pc.in
+install_manifest.txt
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+*.a
+*.lib
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Visual Studio files
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.suo
+[Dd]ebug/
+[Rr]elease/
+x64/
+Win32/
+*.VC.db
+*.pdb
+*.ipdb
+*.iobj
+*.tlog
+.vs/
+vs/
+
+# Log files
+*.log
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Other (add specific files if needed)
+
+# Existing content from user's file (if any)
+# (Ensure previous lines are preserved if the edit mode appends)
+node_modules
+*.node
+/ParsecCore/build
+/ParsecCore/build/_deps

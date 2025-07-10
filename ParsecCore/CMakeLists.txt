@@ -56,6 +56,7 @@ add_executable(parsec_windows_app
     ConfigManager.cpp
     EquationManager.cpp
     SolverCore.cpp
+    MLCore.cpp
 )
 target_include_directories(parsec_windows_app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
@@ -77,6 +78,7 @@ add_executable(parsec_tests
     ConfigManager.cpp
     EquationManager.cpp # Compile EquationManager with tests
     SolverCore.cpp      # Compile SolverCore with tests
+    MLCore.cpp          # Compile MLCore with tests
 )
 
 target_link_libraries(parsec_tests PRIVATE gtest_main muparser) # Link tests against FetchContent muparser

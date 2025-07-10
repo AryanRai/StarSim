@@ -1,0 +1,64 @@
+{
+  "ml_config_version": "1.0",
+  "metadata": {
+    "description": "Example ML configuration for ParsecCore",
+    "author": "StarSim Team",
+    "created": "2025-01-25"
+  },
+  "settings": {
+    "enabled": true,
+    "data_collection_interval": 0.05,
+    "max_data_points": 5000
+  },
+  "ml_models": [
+    {
+      "model_name": "spring_mass_pid_optimizer",
+      "model_type": "pid_optimizer",
+      "description": "Optimizes PID parameters for spring-mass system control",
+      "input_features": "x,v",
+      "output_targets": "control_output",
+      "hyperparameters": {
+        "learning_rate": 0.01,
+        "max_iterations": 1000,
+        "convergence_threshold": 1e-6
+      },
+      "enabled": true
+    },
+    {
+      "model_name": "system_predictor",
+      "model_type": "predictor",
+      "description": "Predicts future system behavior based on current state",
+      "input_features": "x,v,time",
+      "output_targets": "x,v",
+      "hyperparameters": {
+        "prediction_horizon": 1.0,
+        "window_size": 100
+      },
+      "enabled": true
+    },
+    {
+      "model_name": "servo_pid_optimizer",
+      "model_type": "pid_optimizer",
+      "description": "Optimizes PID parameters for servo motor control",
+      "input_features": "position,velocity,setpoint",
+      "output_targets": "control_signal",
+      "hyperparameters": {
+        "learning_rate": 0.005,
+        "max_iterations": 500,
+        "stability_margin": 0.1
+      },
+      "enabled": false
+    }
+  ],
+  "training_settings": {
+    "auto_train": false,
+    "train_interval": 10.0,
+    "validation_split": 0.2,
+    "early_stopping": true
+  },
+  "export_settings": {
+    "export_models": true,
+    "export_format": "json",
+    "export_path": "./models/"
+  }
+} 

@@ -38,33 +38,41 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE) # Force static library for mupars
 FetchContent_MakeAvailable(muparser)
 # --- End External Dependencies ---
 
-# --- Library Code (if needed later, e.g., if ParsecCore becomes a library) ---
-# add_library(parsec_core ParsecCore.cpp ConfigManager.cpp) # Add new source files if creating library
-# target_include_directories(parsec_core PUBLIC
-#    ${CMAKE_CURRENT_SOURCE_DIR}
-#    ${nlohmann_json_SOURCE_DIR}/include # Make json headers available
-# )
-
 # Keep mathcore as INTERFACE for header-only math
 add_library(mathcore INTERFACE)
 target_include_directories(mathcore INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # --- Main Windows Executable (kept for manual testing/running) ---
 add_executable(parsec_windows_app
-    main_windows.cpp
-    ParsecCore.cpp
-    ConfigManager.cpp
-    EquationManager.cpp
-    SolverCore.cpp
-    MLCore.cpp
+    examples/main_windows.cpp
+    src/parsec/ParsecCore.cpp
+    src/parsec/ConfigManager.cpp
+    src/parsec/EquationManager.cpp
+    src/parsec/SolverCore.cpp
+    src/mlcore/MLCore.cpp
 )
 target_include_directories(parsec_windows_app PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/include # For mathcore and parsec headers
+  ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
   ${nlohmann_json_SOURCE_DIR}/include # Include JSON headers
   ${muparser_SOURCE_DIR}/include # Include muParser headers from FetchContent
 )
 target_link_libraries(parsec_windows_app PRIVATE muparser) # Link against FetchContent muparser
+
+# --- ML Example Executable ---
+add_executable(parsec_ml_example
+    examples/main_ml_example.cpp
+    src/parsec/ParsecCore.cpp
+    src/parsec/ConfigManager.cpp
+    src/parsec/EquationManager.cpp
+    src/parsec/SolverCore.cpp
+    src/mlcore/MLCore.cpp
+)
+target_include_directories(parsec_ml_example PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
+  ${nlohmann_json_SOURCE_DIR}/include # Include JSON headers
+  ${muparser_SOURCE_DIR}/include # Include muParser headers from FetchContent
+)
+target_link_libraries(parsec_ml_example PRIVATE muparser) # Link against FetchContent muparser
 
 # --- Test Executable ---
 enable_testing() # Enable CTest support
@@ -75,18 +83,17 @@ add_executable(parsec_tests
     tests/config_manager_tests.cpp
     tests/solver_core_tests.cpp # Add SolverCore test file
     # Add tests/solver_core_tests.cpp later
-    ConfigManager.cpp
-    EquationManager.cpp # Compile EquationManager with tests
-    SolverCore.cpp      # Compile SolverCore with tests
-    MLCore.cpp          # Compile MLCore with tests
+    src/parsec/ConfigManager.cpp
+    src/parsec/EquationManager.cpp # Compile EquationManager with tests
+    src/parsec/SolverCore.cpp      # Compile SolverCore with tests
+    src/mlcore/MLCore.cpp          # Compile MLCore with tests
 )
 
 target_link_libraries(parsec_tests PRIVATE gtest_main muparser) # Link tests against FetchContent muparser
 
 # Include directories needed by the tests
 target_include_directories(parsec_tests PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR} # For IPlatform, ParsecCore.h etc.
-    ${CMAKE_CURRENT_SOURCE_DIR}/include # For mathcore, parsec headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
     ${nlohmann_json_SOURCE_DIR}/include # Include JSON headers for ConfigManager tests
     ${muparser_SOURCE_DIR}/include # Include muParser headers for tests from FetchContent
 )

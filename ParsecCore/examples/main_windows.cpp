@@ -1,7 +1,7 @@
 #ifdef _WIN32
 
-#include "ParsecCore.h"
-#include "IPlatform.h"
+#include "parsec/ParsecCore.h"
+#include "platform/IPlatform.h"
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -75,4 +75,4 @@ int main() {
     return 0;
 }
 
-#endif
+#endif 

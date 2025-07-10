@@ -1,11 +1,11 @@
 #pragma once
 
-#include "IPlatform.h"
-#include "ConfigManager.h"          // Include ConfigManager
+#include "platform/IPlatform.h"
+#include "parsec/ConfigManager.h"          // Include ConfigManager
 #include "parsec/EquationManager.h" // Update path
 #include "parsec/SolverCore.h"      // Update path
 #include "parsec/ModelConfig.h"   // Include ModelConfig
-#include "parsec/MLCore.h"        // Include MLCore
+#include "mlcore/MLCore.h"        // Include MLCore
 #include <string>
 #include <memory>                 // For std::unique_ptr
 #include <map>                    // For SimulationState
@@ -50,4 +50,4 @@ private:
 
     // Internal helper to clear the current model state
     void clearModel();
-};
+}; 

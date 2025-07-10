@@ -1,5 +1,5 @@
-#include "ParsecCore.h"
-#include "IPlatform.h"
+#include "parsec/ParsecCore.h"
+#include "platform/IPlatform.h"
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -15,7 +15,7 @@ public:
         std::cout << "[WIN] " << message << std::endl;
     }
 
-    double getMillis() override {
+    uint64_t getMillis() override {
         return std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()
         ).count();

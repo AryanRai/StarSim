@@ -2,7 +2,7 @@
 #include "parsec/SolverCore.h"
 #include "parsec/EquationManager.h"
 #include "parsec/ModelConfig.h"
-#include "ConfigManager.h"
+#include "parsec/ConfigManager.h"
 #include <filesystem> // Requires C++17
 #include <memory> // For unique_ptr
 #include <cmath> // For std::abs

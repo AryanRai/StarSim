@@ -1,5 +1,5 @@
-#include "ParsecCore.h"
-#include "IPlatform.h"
+#include "parsec/ParsecCore.h"
+#include "platform/IPlatform.h"
 #include <string> // Needed for std::to_string
 #include <vector>
 #include <iostream> // For logging errors
@@ -157,4 +157,4 @@ bool ParsecCore::trainMLModel(const std::string& model_name) {
     }
     
     return success;
-}
+} 

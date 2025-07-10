@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "ConfigManager.h"
+#include "parsec/ConfigManager.h"
 #include "parsec/ModelConfig.h"
 #include <fstream>
 #include <filesystem> // Requires C++17

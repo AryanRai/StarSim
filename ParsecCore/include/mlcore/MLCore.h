@@ -1,13 +1,26 @@
 #pragma once
 
+// Modular ML Core - Import all ML algorithm domains
+#include "mlcore/MLDataStructures.h"
+#include "mlcore/DataCollection.h"
+#include "mlcore/PIDOptimizer.h"
+#include "mlcore/LinearRegression.h"
+
+// Forward declarations for core dependencies
 #include "parsec/ModelConfig.h"
 #include "parsec/SolverCore.h"
-#include <vector>
-#include <string>
-#include <map>
-#include <memory>
-#include <functional>
-#include <optional>
+
+// This is the main MLCore header that provides access to all ML domains.
+// You can now import specific ML concepts individually:
+//
+//   #include "mlcore/MLDataStructures.h"  // For common ML data structures and utilities
+//   #include "mlcore/DataCollection.h"    // For data collection and preprocessing
+//   #include "mlcore/PIDOptimizer.h"      // For PID parameter optimization
+//   #include "mlcore/LinearRegression.h"  // For linear regression algorithms
+//
+// Or import everything at once:
+//
+//   #include "mlcore/MLCore.h"            // Imports all ML domains
 
 namespace parsec {
 
@@ -15,38 +28,7 @@ namespace parsec {
 class EquationManager;
 class SolverCore;
 
-// Structure to hold ML model configuration
-struct MLModelConfig {
-    std::string model_name;
-    std::string model_type;        // "pid_optimizer", "system_identifier", "predictor", etc.
-    std::string input_features;    // Comma-separated list of input variables
-    std::string output_targets;    // Comma-separated list of output variables
-    std::map<std::string, double> hyperparameters;
-    std::string model_path;        // Path to saved model file (optional)
-    bool enabled = true;
-};
-
-// Structure to hold training/inference data
-struct MLDataPoint {
-    double timestamp;
-    std::map<std::string, double> inputs;
-    std::map<std::string, double> outputs;
-    std::map<std::string, double> targets;  // For supervised learning
-};
-
-// Structure to hold ML predictions/recommendations
-struct MLPrediction {
-    std::string model_name;
-    std::map<std::string, double> predictions;
-    std::map<std::string, double> recommendations;  // e.g., optimal PID values
-    double confidence = 0.0;
-    std::string status = "success";
-};
-
-// Callback function types for ML events
-using MLTrainingCallback = std::function<void(const std::string& model_name, int epoch, double loss)>;
-using MLPredictionCallback = std::function<void(const MLPrediction& prediction)>;
-
+// Unified MLCore class that integrates all ML functionality
 class MLCore {
 public:
     explicit MLCore(const ModelConfig& config);
@@ -55,7 +37,7 @@ public:
     bool loadMLConfiguration(const std::string& ml_config_path);
     bool isEnabled() const;
     
-    // Data collection and processing
+    // Data collection and processing (delegated to DataCollector)
     void collectData(const SimulationState& currentState, double timestamp);
     void processCollectedData();
     
@@ -68,7 +50,7 @@ public:
     bool loadModel(const std::string& model_name, const std::string& path);
     std::vector<std::string> getAvailableModels() const;
     
-    // PID optimization specific methods
+    // PID optimization specific methods (delegated to PIDOptimizer)
     std::map<std::string, double> optimizePIDParameters(
         const std::string& control_variable,
         const std::string& setpoint_variable,
@@ -82,32 +64,58 @@ public:
     // Callbacks
     void setTrainingCallback(MLTrainingCallback callback);
     void setPredictionCallback(MLPredictionCallback callback);
+    void setValidationCallback(MLValidationCallback callback);
+    void setFeatureCallback(MLFeatureCallback callback);
     
     // Configuration
     void setDataCollectionInterval(double interval_seconds);
     void setMaxDataPoints(size_t max_points);
     
+    // Advanced ML functionality access
+    MLAlgorithms::DataCollector& getDataCollector() { return *dataCollector_; }
+    MLAlgorithms::PIDOptimizer& getPIDOptimizer() { return *pidOptimizer_; }
+    MLAlgorithms::LinearRegression& getLinearRegression() { return *linearRegression_; }
+    
+    // Convenience methods for common tasks
+    MLAlgorithms::PIDOptimizer::PIDParameters optimizePID(
+        const std::string& control_variable,
+        const std::string& setpoint_variable,
+        const std::string& method = "genetic_algorithm"
+    );
+    
+    MLAlgorithms::LinearRegression::RegressionResult trainRegression(
+        const std::vector<std::string>& input_features,
+        const std::string& target_variable,
+        const std::string& algorithm = "ordinary_least_squares"
+    );
+    
 private:
     const ModelConfig& modelConfig_;
     std::vector<MLModelConfig> mlModels_;
-    std::vector<MLDataPoint> collectedData_;
+    
+    // ML Algorithm components
+    std::unique_ptr<MLAlgorithms::DataCollector> dataCollector_;
+    std::unique_ptr<MLAlgorithms::PIDOptimizer> pidOptimizer_;
+    std::unique_ptr<MLAlgorithms::LinearRegression> linearRegression_;
     
     // Configuration
     bool enabled_ = false;
-    double dataCollectionInterval_ = 0.1;  // seconds
-    size_t maxDataPoints_ = 10000;
     double lastCollectionTime_ = 0.0;
     
     // Callbacks
     MLTrainingCallback trainingCallback_;
     MLPredictionCallback predictionCallback_;
+    MLValidationCallback validationCallback_;
+    MLFeatureCallback featureCallback_;
     
     // Internal helpers
     std::vector<std::string> parseFeatureList(const std::string& feature_string) const;
-    MLDataPoint createDataPoint(const SimulationState& state, double timestamp) const;
     bool validateMLModelConfig(const MLModelConfig& config) const;
     
-    // ML algorithm implementations (basic versions)
+    // Model registry
+    std::map<std::string, std::string> modelRegistry_;  // model_name -> model_type
+    
+    // Legacy compatibility methods
     std::map<std::string, double> simpleLinearRegression(
         const std::vector<MLDataPoint>& data,
         const std::vector<std::string>& input_features,
@@ -119,10 +127,18 @@ private:
         const std::string& control_var,
         const std::string& setpoint_var
     ) const;
-    
-    // Data preprocessing
-    std::vector<MLDataPoint> preprocessData(const std::vector<MLDataPoint>& raw_data) const;
-    void normalizeFeatures(std::vector<MLDataPoint>& data) const;
 };
 
-} // namespace parsec 
+} // namespace parsec
+
+// Example usage:
+//
+// #include "mlcore/PIDOptimizer.h"
+// #include "mlcore/DataCollection.h"
+//
+// parsec::MLCore mlCore(config);
+// auto& pidOptimizer = mlCore.getPIDOptimizer();
+// auto pidParams = pidOptimizer.optimizeGeneticAlgorithm(data, "control", "setpoint");
+//
+// parsec::MLAlgorithms::DataCollector collector(config);
+// collector.enableFeatureEngineering(true, true, 10); 

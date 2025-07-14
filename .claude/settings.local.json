@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(cmake:*)",
-      "Bash(ctest:*)"
+      "Bash(ctest:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

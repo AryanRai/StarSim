@@ -51,6 +51,8 @@ add_executable(parsec_windows_app
     src/parsec/SolverCore.cpp
     src/mlcore/modules/MLCore.cpp
     src/mathcore/modules/BasicMath.cpp
+    src/tradingcore/TradingCore.cpp
+    src/tradingcore/static/TradingConstants.cpp
 )
 target_include_directories(parsec_windows_app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
@@ -68,6 +70,8 @@ add_executable(parsec_ml_example
     src/parsec/SolverCore.cpp
     src/mlcore/modules/MLCore.cpp
     src/mathcore/modules/BasicMath.cpp
+    src/tradingcore/TradingCore.cpp
+    src/tradingcore/static/TradingConstants.cpp
 )
 target_include_directories(parsec_ml_example PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
@@ -84,12 +88,15 @@ add_executable(parsec_tests
     tests/math_tests.cpp
     tests/config_manager_tests.cpp
     tests/solver_core_tests.cpp # Add SolverCore test file
+    tests/tradingcore_tests.cpp # TradingCore tests
     # Add tests/solver_core_tests.cpp later
     src/parsec/ConfigManager.cpp
     src/parsec/EquationManager.cpp # Compile EquationManager with tests
     src/parsec/SolverCore.cpp      # Compile SolverCore with tests
     src/mlcore/modules/MLCore.cpp  # Compile MLCore with tests
     src/mathcore/modules/BasicMath.cpp # Compile BasicMath with tests
+    src/tradingcore/TradingCore.cpp # Compile TradingCore with tests
+    src/tradingcore/static/TradingConstants.cpp # Compile TradingConstants with tests
 )
 
 target_link_libraries(parsec_tests PRIVATE gtest_main muparser) # Link tests against FetchContent muparser

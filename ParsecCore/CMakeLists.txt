@@ -49,7 +49,8 @@ add_executable(parsec_windows_app
     src/parsec/ConfigManager.cpp
     src/parsec/EquationManager.cpp
     src/parsec/SolverCore.cpp
-    src/mlcore/MLCore.cpp
+    src/mlcore/modules/MLCore.cpp
+    src/mathcore/modules/BasicMath.cpp
 )
 target_include_directories(parsec_windows_app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
@@ -65,7 +66,8 @@ add_executable(parsec_ml_example
     src/parsec/ConfigManager.cpp
     src/parsec/EquationManager.cpp
     src/parsec/SolverCore.cpp
-    src/mlcore/MLCore.cpp
+    src/mlcore/modules/MLCore.cpp
+    src/mathcore/modules/BasicMath.cpp
 )
 target_include_directories(parsec_ml_example PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
@@ -86,7 +88,8 @@ add_executable(parsec_tests
     src/parsec/ConfigManager.cpp
     src/parsec/EquationManager.cpp # Compile EquationManager with tests
     src/parsec/SolverCore.cpp      # Compile SolverCore with tests
-    src/mlcore/MLCore.cpp          # Compile MLCore with tests
+    src/mlcore/modules/MLCore.cpp  # Compile MLCore with tests
+    src/mathcore/modules/BasicMath.cpp # Compile BasicMath with tests
 )
 
 target_link_libraries(parsec_tests PRIVATE gtest_main muparser) # Link tests against FetchContent muparser

@@ -5,8 +5,13 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <map>
+#include <string>
 
 namespace parsec {
+
+// Forward declaration
+using SimulationState = std::map<std::string, double>;
 
 namespace MLAlgorithms {
 

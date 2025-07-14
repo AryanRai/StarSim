@@ -145,7 +145,7 @@ namespace LinearAlgebra {
         Matrix<N, M> transpose() const;
         
         // Static constructors
-        static Matrix<M, N> identity() requires (M == N);
+        static Matrix<M, N> identity();
         static Matrix<M, N> zeros();
         static Matrix<M, N> ones();
     };

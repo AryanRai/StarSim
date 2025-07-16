@@ -149,6 +149,64 @@ For ML Core functionality and configuration, see the [ML README](./ParsecCore/ML
 
 ---
 
+## MathCore (Implemented & Planned)
+
+**MathCore** provides mathematical utilities, algorithms, and numerical methods for simulation, ML, and trading. It is designed for:
+- Core math operations (arithmetic, statistics, linear algebra)
+- Numerical methods for solvers and optimizers
+- Foundation for MLCore, PhysCore, and TradingCore modules
+
+### Implemented Modules
+- `include/mathcore/math.h` / `src/mathcore/math.cpp`: MathCore API and basic math logic
+- `include/mathcore/modules/BasicMath.h` / `src/mathcore/modules/BasicMath.cpp`: Basic math operations
+- `include/mathcore/modules/LinearAlgebra.h`: Matrix and vector operations
+- `include/mathcore/modules/NumericalMethods.h`: Numerical algorithms (integration, differentiation, etc.)
+- `include/mathcore/modules/Statistics.h`: Statistical functions
+
+### Planned/Upcoming Modules
+- Optimization algorithms (gradient descent, simplex, etc.)
+- Advanced matrix decompositions (SVD, QR, etc.)
+- Symbolic math support
+- Math constants and static tables
+
+### Extension Points
+- Add optimization routines for ML and trading
+- Expand matrix and tensor support
+- Integrate with external math libraries (Eigen, BLAS, etc.)
+
+---
+
+## PhysCore (Implemented & Planned)
+
+**PhysCore** provides physics models, constants, and utilities for simulation and engineering applications. It is designed for:
+- Modeling statics, dynamics, thermofluids, and material science
+- Providing reusable physics modules for simulation and control
+- Supplying constants and utility functions for engineering
+
+### Implemented Modules
+- `include/physcore/PhysCore.h` / `src/physcore/physcore.cpp`: PhysCore API and core logic
+- `include/physcore/PhysicsConstants.h`: Physics constants
+- `include/physcore/PhysicsUtils.h`: Utility functions for physics calculations
+- `include/physcore/modules/Statics.h`: Statics models
+- `include/physcore/modules/Dynamics.h`: Dynamics models
+- `include/physcore/modules/Thermofluids.h`: Thermofluids models
+- `include/physcore/modules/Controls.h`: Controls and feedback systems
+- `include/physcore/modules/MaterialScience.h`: Material science models
+- `src/physcore/modules/PhysCore.cpp`: Implementation for core physics modules
+
+### Planned/Upcoming Modules
+- Stochastic processes for uncertainty modeling
+- Advanced control theory (state-space, observers)
+- FEM (finite element method) support
+- Symbolic physics modeling
+
+### Extension Points
+- Add stochastic and uncertainty modeling
+- Integrate advanced control and estimation algorithms
+- Expand to multi-physics and coupled systems
+
+---
+
 ## StarSim Framework (Frontend & Orchestration)
 
 *(TODO: Describe the higher-level StarSim application, UI, visualization, model building tools, and how it interacts with ParsecCore and potentially Comms components)*

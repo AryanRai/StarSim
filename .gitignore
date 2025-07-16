@@ -69,3 +69,36 @@ Thumbs.db
 
 # Other (add specific files if needed)
 
+# API keys and environment variables
+.env
+*.env
+
+# Local configuration and secrets
+*.local.json
+live_trading_config.json
+ParsecCore/examples/live_trading_config.json
+
+# Test outputs and temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swn
+*.swo
+
+# Python cache and artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter Notebooks (if any)
+*.ipynb_checkpoints/
+
+# Data files (if not tracked)
+historical_data_*.csv
+ParsecCore/examples/historical_data_*.csv
+
+# Ignore null files
+nul
+

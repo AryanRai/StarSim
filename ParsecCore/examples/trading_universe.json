@@ -1,0 +1,185 @@
+{
+  "AI_TECH": {
+    "NVDA": {
+      "price": 171.04500000000002,
+      "bid": 171.04,
+      "ask": 171.05,
+      "spread": 0.010000000000019327,
+      "category": "AI_TECH"
+    },
+    "GOOGL": {
+      "price": 183.89,
+      "bid": 183.88,
+      "ask": 183.9,
+      "spread": 0.020000000000010232,
+      "category": "AI_TECH"
+    },
+    "MSFT": {
+      "price": 507.075,
+      "bid": 506.65,
+      "ask": 507.5,
+      "spread": 0.8500000000000227,
+      "category": "AI_TECH"
+    },
+    "AAPL": {
+      "price": 210.85500000000002,
+      "bid": 210.84,
+      "ask": 210.87,
+      "spread": 0.030000000000001137,
+      "category": "AI_TECH"
+    },
+    "AMZN": {
+      "price": 226.39,
+      "bid": 226.38,
+      "ask": 226.4,
+      "spread": 0.020000000000010232,
+      "category": "AI_TECH"
+    },
+    "META": {
+      "price": 719.995,
+      "bid": 705,
+      "ask": 734.99,
+      "spread": 29.99000000000001,
+      "category": "AI_TECH"
+    }
+  },
+  "GROWTH": {
+    "TSLA": {
+      "price": 315.0,
+      "bid": 312,
+      "ask": 318,
+      "spread": 6,
+      "category": "GROWTH"
+    },
+    "PLTR": {
+      "price": 149.76999999999998,
+      "bid": 149.75,
+      "ask": 149.79,
+      "spread": 0.03999999999999204,
+      "category": "GROWTH"
+    },
+    "SNOW": {
+      "price": 214.245,
+      "bid": 213.49,
+      "ask": 215,
+      "spread": 1.509999999999991,
+      "category": "GROWTH"
+    },
+    "CRWD": {
+      "price": 117.505,
+      "bid": 235.01,
+      "ask": 0,
+      "spread": -235.01,
+      "category": "GROWTH"
+    },
+    "DDOG": {
+      "price": 70.55,
+      "bid": 141.1,
+      "ask": 0,
+      "spread": -141.1,
+      "category": "GROWTH"
+    },
+    "MDB": {
+      "price": 224.08499999999998,
+      "bid": 205.17,
+      "ask": 243,
+      "spread": 37.83000000000001,
+      "category": "GROWTH"
+    },
+    "NET": {
+      "price": 127.44,
+      "bid": 70,
+      "ask": 184.88,
+      "spread": 114.88,
+      "category": "GROWTH"
+    }
+  },
+  "ETFS": {
+    "SPY": {
+      "price": 624.825,
+      "bid": 624.79,
+      "ask": 624.86,
+      "spread": 0.07000000000005002,
+      "category": "ETFS"
+    },
+    "QQQ": {
+      "price": 559.065,
+      "bid": 559.05,
+      "ask": 559.08,
+      "spread": 0.030000000000086402,
+      "category": "ETFS"
+    },
+    "VTI": {
+      "price": 307.6,
+      "bid": 307.57,
+      "ask": 307.63,
+      "spread": 0.060000000000002274,
+      "category": "ETFS"
+    },
+    "ARKK": {
+      "price": 73.245,
+      "bid": 73.24,
+      "ask": 73.25,
+      "spread": 0.010000000000005116,
+      "category": "ETFS"
+    },
+    "XLK": {
+      "price": 258.73,
+      "bid": 258.72,
+      "ask": 258.74,
+      "spread": 0.01999999999998181,
+      "category": "ETFS"
+    },
+    "SMH": {
+      "price": 291.385,
+      "bid": 291.32,
+      "ask": 291.45,
+      "spread": 0.12999999999999545,
+      "category": "ETFS"
+    }
+  },
+  "DEFENSIVE": {
+    "JNJ": {
+      "price": 159.07,
+      "bid": 155.18,
+      "ask": 162.96,
+      "spread": 7.780000000000001,
+      "category": "DEFENSIVE"
+    },
+    "PG": {
+      "price": 154.185,
+      "bid": 152.42,
+      "ask": 155.95,
+      "spread": 3.530000000000001,
+      "category": "DEFENSIVE"
+    },
+    "KO": {
+      "price": 69.305,
+      "bid": 69.29,
+      "ask": 69.32,
+      "spread": 0.029999999999986926,
+      "category": "DEFENSIVE"
+    },
+    "WMT": {
+      "price": 47.615,
+      "bid": 95.23,
+      "ask": 0,
+      "spread": -95.23,
+      "category": "DEFENSIVE"
+    },
+    "BRK.B": {
+      "price": 474.95000000000005,
+      "bid": 470.99,
+      "ask": 478.91,
+      "spread": 7.920000000000016,
+      "category": "DEFENSIVE"
+    },
+    "VZ": {
+      "price": 41.285,
+      "bid": 41.28,
+      "ask": 41.29,
+      "spread": 0.00999999999999801,
+      "category": "DEFENSIVE"
+    }
+  }
+}

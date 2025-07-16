@@ -21,6 +21,14 @@ struct ModelConfig {
     std::vector<std::string> equations; // Store as strings for now
     SolverSettings solver;
     std::vector<std::string> outputs; // Names of variables to output
+    
+    // Additional fields for advanced paper trading
+    std::string model_type;
+    std::string training_data_path;
+    double validation_split;
+    int epochs;
+    int batch_size;
+    double learning_rate;
 
     // We'll add methods to load this from JSON later via ConfigManager
 };

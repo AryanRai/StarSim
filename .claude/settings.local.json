@@ -3,7 +3,14 @@
     "allow": [
       "Bash(cmake:*)",
       "Bash(ctest:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(.simple_paper_trading.exe)",
+      "Bash(simple_paper_trading.exe)",
+      "Bash(dir)",
+      "Bash(wmic process where:*)",
+      "Bash(cmd /c:*)",
+      "Bash(alpaca_live_trading.exe)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

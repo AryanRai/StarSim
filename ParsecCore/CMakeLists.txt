@@ -73,12 +73,89 @@ add_executable(parsec_ml_example
     src/tradingcore/TradingCore.cpp
     src/tradingcore/static/TradingConstants.cpp
 )
+
+# --- Advanced Paper Trading Example ---
+add_executable(advanced_paper_trading
+    examples/advanced_paper_trading.cpp
+    src/parsec/ParsecCore.cpp
+    src/parsec/ConfigManager.cpp
+    src/parsec/EquationManager.cpp
+    src/parsec/SolverCore.cpp
+    src/mlcore/modules/MLCore.cpp
+    src/mathcore/modules/BasicMath.cpp
+    src/tradingcore/TradingCore.cpp
+    src/tradingcore/static/TradingConstants.cpp
+)
 target_include_directories(parsec_ml_example PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
   ${nlohmann_json_SOURCE_DIR}/include # Include JSON headers
   ${muparser_SOURCE_DIR}/include # Include muParser headers from FetchContent
 )
 target_link_libraries(parsec_ml_example PRIVATE muparser) # Link against FetchContent muparser
+
+target_include_directories(advanced_paper_trading PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
+  ${nlohmann_json_SOURCE_DIR}/include # Include JSON headers
+  ${muparser_SOURCE_DIR}/include # Include muParser headers from FetchContent
+)
+target_link_libraries(advanced_paper_trading PRIVATE muparser) # Link against FetchContent muparser
+
+# --- Simple Paper Trading Example ---
+add_executable(simple_paper_trading
+    examples/simple_paper_trading.cpp
+    src/parsec/ParsecCore.cpp
+    src/parsec/ConfigManager.cpp
+    src/parsec/EquationManager.cpp
+    src/parsec/SolverCore.cpp
+    src/mlcore/modules/MLCore.cpp
+    src/mathcore/modules/BasicMath.cpp
+    src/tradingcore/TradingCore.cpp
+    src/tradingcore/static/TradingConstants.cpp
+)
+target_include_directories(simple_paper_trading PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
+  ${nlohmann_json_SOURCE_DIR}/include # Include JSON headers
+  ${muparser_SOURCE_DIR}/include # Include muParser headers from FetchContent
+)
+target_link_libraries(simple_paper_trading PRIVATE muparser) # Link against FetchContent muparser
+
+# --- Alpaca Live Trading Example ---
+add_executable(alpaca_live_trading
+    examples/alpaca_simple.cpp
+    src/parsec/ParsecCore.cpp
+    src/parsec/ConfigManager.cpp
+    src/parsec/EquationManager.cpp
+    src/parsec/SolverCore.cpp
+    src/mlcore/modules/MLCore.cpp
+    src/mathcore/modules/BasicMath.cpp
+    src/tradingcore/TradingCore.cpp
+    src/tradingcore/static/TradingConstants.cpp
+)
+target_include_directories(alpaca_live_trading PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
+  ${nlohmann_json_SOURCE_DIR}/include # Include JSON headers
+  ${muparser_SOURCE_DIR}/include # Include muParser headers from FetchContent
+)
+target_link_libraries(alpaca_live_trading PRIVATE muparser) # Link against FetchContent muparser
+
+# --- Quick Demo Example ---
+add_executable(quick_trading_demo
+    examples/quick_demo.cpp
+    src/parsec/ParsecCore.cpp
+    src/parsec/ConfigManager.cpp
+    src/parsec/EquationManager.cpp
+    src/parsec/SolverCore.cpp
+    src/mlcore/modules/MLCore.cpp
+    src/mathcore/modules/BasicMath.cpp
+    src/tradingcore/TradingCore.cpp
+    src/tradingcore/static/TradingConstants.cpp
+)
+target_include_directories(quick_trading_demo PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include # For all headers
+  ${nlohmann_json_SOURCE_DIR}/include # Include JSON headers
+  ${muparser_SOURCE_DIR}/include # Include muParser headers from FetchContent
+)
+target_link_libraries(quick_trading_demo PRIVATE muparser) # Link against FetchContent muparser
 
 # --- Test Executable ---
 enable_testing() # Enable CTest support

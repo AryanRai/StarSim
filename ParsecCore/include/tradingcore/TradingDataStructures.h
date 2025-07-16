@@ -34,9 +34,13 @@ struct MarketDataPoint {
     OHLCV data;
     std::map<std::string, double> additional_fields; // For custom indicators
     
+    // Additional fields for advanced paper trading
+    Price price;
+    Volume volume;
+    
     MarketDataPoint() = default;
     MarketDataPoint(const std::string& sym, const OHLCV& ohlcv)
-        : symbol(sym), data(ohlcv) {}
+        : symbol(sym), data(ohlcv), price(ohlcv.close), volume(ohlcv.volume) {}
 };
 
 struct HistoricalData {
@@ -169,6 +173,15 @@ struct Portfolio {
     const Position* getPosition(const std::string& symbol) const;
 };
 
+// Strategy types
+enum class StrategyType {
+    MOMENTUM,
+    MEAN_REVERSION,
+    ML_ENHANCED,
+    SECTOR_ROTATION,
+    DEFENSIVE
+};
+
 // Strategy configuration
 struct StrategyConfig {
     std::string name;
@@ -177,7 +190,10 @@ struct StrategyConfig {
     std::vector<std::string> symbols;
     bool enabled;
     
-    StrategyConfig() : enabled(true) {}
+    // Additional fields for advanced paper trading
+    double weight;
+    
+    StrategyConfig() : enabled(true), weight(1.0) {}
     
     // Helper methods for common parameters
     double getParameter(const std::string& key, double default_val = 0.0) const;
@@ -195,9 +211,17 @@ struct RiskParams {
     bool use_atr_sizing; // Use ATR for position sizing
     double atr_multiplier; // ATR multiplier for stop loss
     
+    // Additional fields for advanced paper trading
+    double daily_loss_limit;
+    bool enable_stop_loss;
+    double default_stop_loss;
+    bool enable_take_profit;
+    double default_take_profit;
+    
     RiskParams() : max_position_size(0.1), max_daily_loss(0.02), max_drawdown(0.1),
                    stop_loss_pct(0.05), take_profit_pct(0.10), use_atr_sizing(false),
-                   atr_multiplier(2.0) {}
+                   atr_multiplier(2.0), daily_loss_limit(0.02), enable_stop_loss(true),
+                   default_stop_loss(0.05), enable_take_profit(true), default_take_profit(0.10) {}
 };
 
 // Performance metrics
@@ -240,7 +264,14 @@ struct MarketDataConfig {
     std::string data_provider; // "alpaca", "yahoo", "alpha_vantage"
     int max_bars; // Maximum historical bars to fetch
     
-    MarketDataConfig() : timeframe("1min"), real_time(false), max_bars(1000) {}
+    // Additional fields for advanced paper trading
+    std::string provider;
+    bool enable_real_time;
+    bool enable_historical;
+    int cache_size;
+    
+    MarketDataConfig() : timeframe("1min"), real_time(false), max_bars(1000),
+                         provider("alpaca"), enable_real_time(true), enable_historical(true), cache_size(10000) {}
 };
 
 // Callback function types

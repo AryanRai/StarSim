@@ -62,7 +62,18 @@ struct OptimizationParams {
     double risk_parity_tolerance = 1e-6;
     int max_iterations = 1000;
     
-    OptimizationParams() = default;
+    // Additional fields for advanced paper trading
+    int lookback_days;
+    
+    OptimizationParams() : lookback_days(30) {}
+};
+
+// Rebalancing frequency enum
+enum class RebalancingFrequency {
+    DAILY,
+    WEEKLY,
+    MONTHLY,
+    QUARTERLY
 };
 
 // Rebalancing configuration
@@ -89,7 +100,12 @@ struct RebalancingConfig {
     int max_trades_per_rebalance = 10;
     std::vector<int> allowed_rebalance_hours = {9, 10, 14, 15}; // Market hours
     
-    RebalancingConfig() = default;
+    // Additional fields for advanced paper trading
+    RebalancingFrequency frequency;
+    double threshold;
+    bool enable_tax_optimization;
+    
+    RebalancingConfig() : frequency(RebalancingFrequency::DAILY), threshold(0.05), enable_tax_optimization(false) {}
 };
 
 // Base class for portfolio optimizers

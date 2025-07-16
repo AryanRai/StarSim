@@ -1,0 +1,84 @@
+{
+    "model_config": {
+        "model_type": "ensemble",
+        "base_models": [
+            {
+                "name": "lstm_price_predictor",
+                "type": "lstm",
+                "input_features": ["price", "volume", "rsi", "macd", "bollinger_bands"],
+                "sequence_length": 60,
+                "hidden_units": 128,
+                "dropout_rate": 0.2,
+                "learning_rate": 0.001,
+                "batch_size": 32,
+                "epochs": 100,
+                "validation_split": 0.2
+            },
+            {
+                "name": "random_forest_momentum",
+                "type": "random_forest",
+                "input_features": ["momentum_20", "momentum_50", "rsi", "volume_ratio", "price_change"],
+                "n_estimators": 100,
+                "max_depth": 10,
+                "min_samples_split": 5,
+                "min_samples_leaf": 2,
+                "random_state": 42
+            },
+            {
+                "name": "xgboost_regime_detector",
+                "type": "xgboost",
+                "input_features": ["volatility", "trend_strength", "volume_profile", "sector_rotation"],
+                "n_estimators": 200,
+                "max_depth": 6,
+                "learning_rate": 0.1,
+                "subsample": 0.8,
+                "colsample_bytree": 0.8,
+                "random_state": 42
+            }
+        ],
+        "ensemble_method": "weighted_voting",
+        "ensemble_weights": [0.4, 0.3, 0.3],
+        "confidence_threshold": 0.7,
+        "retrain_frequency": "weekly"
+    },
+    "feature_engineering": {
+        "technical_indicators": [
+            {"name": "rsi", "period": 14},
+            {"name": "macd", "fast": 12, "slow": 26, "signal": 9},
+            {"name": "bollinger_bands", "period": 20, "std_dev": 2},
+            {"name": "momentum", "periods": [10, 20, 50]},
+            {"name": "volume_ratio", "period": 20},
+            {"name": "atr", "period": 14},
+            {"name": "stochastic", "k_period": 14, "d_period": 3}
+        ],
+        "market_indicators": [
+            {"name": "vix", "symbol": "VIX"},
+            {"name": "yield_curve", "symbols": ["^TNX", "^FVX"]},
+            {"name": "sector_rotation", "sectors": ["XLF", "XLK", "XLV", "XLE", "XLI", "XLY", "XLP", "XLU", "XLB"]}
+        ],
+        "sentiment_indicators": [
+            {"name": "fear_greed_index", "source": "cnn"},
+            {"name": "put_call_ratio", "source": "cboe"},
+            {"name": "insider_trading", "source": "sec"}
+        ]
+    },
+    "risk_management": {
+        "portfolio_heat": 0.02,
+        "max_correlation": 0.7,
+        "var_confidence": 0.95,
+        "stress_test_scenarios": [
+            {"name": "market_crash", "magnitude": -0.20},
+            {"name": "interest_rate_shock", "magnitude": 0.03},
+            {"name": "sector_rotation", "magnitude": 0.15}
+        ]
+    },
+    "backtesting": {
+        "start_date": "2020-01-01",
+        "end_date": "2024-12-31",
+        "benchmark": "SPY",
+        "transaction_costs": 0.001,
+        "slippage": 0.0005,
+        "rebalance_frequency": "daily",
+        "lookback_period": 252
+    }
+}

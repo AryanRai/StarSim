@@ -248,6 +248,58 @@ graph TB
     N --> J
 ```
 
+### Key Integration Components
+
+The integration between StarSim and Comms Alpha v3.0 is now implemented with these key components:
+
+1. **InputManager (C++)**: A new C++ class that connects ParsecCore simulations to the Stream Handler WebSocket server, enabling real-time data exchange between the physics engine and the UI.
+
+2. **Physics-specific Stream Protocol**: An extension to the Stream Handler protocol that supports physics simulation data, including vectors, matrices, and specialized physics quantities.
+
+3. **AriesUI Physics Widgets**: A set of specialized widgets for physics visualization:
+   - **PhysicsValueMonitor**: Displays physics values with units and trend indicators
+   - **PhysicsChart**: Real-time charts for physics data visualization
+   - **PhysicsVectorField**: 2D vector field visualization for forces, velocities, etc.
+   - **PhysicsControlPanel**: Interface for controlling simulation parameters
+
+### Example Integration
+
+```cpp
+// C++ example using InputManager
+#include "parsec/InputManager.h"
+
+int main() {
+    // Create input manager for simulation
+    parsec::InputManager input_manager("spring_mass_system");
+    input_manager.initialize("ws://localhost:3000");
+    
+    // Register streams
+    input_manager.registerStream("position", "Position", "float", "m");
+    input_manager.registerStream("velocity", "Velocity", "float", "m/s");
+    
+    // Update simulation status
+    input_manager.updateStatus("running");
+    
+    // Simulation loop
+    for (int i = 0; i < 1000; ++i) {
+        // Update simulation
+        position += velocity * dt;
+        velocity += acceleration * dt;
+        
+        // Send to Stream Handler
+        input_manager.updateStreamValue("position", position);
+        input_manager.updateStreamValue("velocity", velocity);
+        
+        // Sleep to control simulation speed
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    
+    return 0;
+}
+```
+
+For detailed integration documentation, see [INTEGRATION.md](INTEGRATION.md).
+
 ### Component Integration Map
 
 | Comms Component | StarSim Integration | Implementation |

@@ -1,115 +1,186 @@
-#pragma once
+#ifndef PARSEC_INPUT_MANAGER_H
+#define PARSEC_INPUT_MANAGER_H
 
-#include "parsec/ModelConfig.h"
-#include "parsec/SolverCore.h"
-#include <vector>
 #include <string>
+#include <vector>
 #include <map>
 #include <functional>
 #include <memory>
-#include <chrono>
+#include <mutex>
+#include <thread>
+#include <atomic>
 
 namespace parsec {
 
-// Forward declarations
-class IPlatform;
-
-// Structure to represent an input source
-struct InputSource {
-    std::string name;               // Variable name to update in simulation
-    std::string source_type;        // "sensor", "control", "simulation", "stream"
-    std::string interface;          // "serial", "analog", "digital", "can", "websocket", etc.
-    std::string address;            // Port, pin, URL, or identifier
-    double update_frequency;        // Hz - how often to read this input
-    double last_update_time = 0.0;  // Internal tracking
-    double current_value = 0.0;     // Current cached value
-    bool enabled = true;
-    std::map<std::string, std::string> parameters; // Interface-specific parameters
-};
-
-// Structure for input data with metadata
+/**
+ * @brief Input data structure for storing values received from various sources
+ */
 struct InputData {
-    std::string source_name;
+    std::string id;
+    std::string name;
+    std::string datatype;
+    std::string unit;
     double value;
-    double timestamp;
-    std::string units;
-    bool valid = true;
-    std::string error_message;
+    std::vector<double> vector_value;
+    std::map<std::string, std::string> metadata;
+    std::string timestamp;
 };
 
-// Callback function types for input events
-using InputCallback = std::function<void(const InputData& data)>;
-using InputErrorCallback = std::function<void(const std::string& source_name, const std::string& error)>;
+/**
+ * @brief Callback function type for input data updates
+ */
+using InputCallback = std::function<void(const InputData&)>;
 
+/**
+ * @brief Input Manager for handling data from various sources
+ * 
+ * The InputManager is responsible for receiving data from external sources
+ * (WebSocket, Serial, etc.) and making it available to the simulation.
+ */
 class InputManager {
 public:
-    explicit InputManager(const ModelConfig& config, IPlatform* platform);
+    /**
+     * @brief Constructor
+     * @param simulation_id Unique identifier for the simulation
+     */
+    InputManager(const std::string& simulation_id);
     
-    // Configuration and setup
-    bool loadInputConfiguration(const std::string& input_config_path);
-    bool addInputSource(const InputSource& source);
-    bool removeInputSource(const std::string& source_name);
+    /**
+     * @brief Destructor
+     */
+    ~InputManager();
     
-    // Input processing
-    void updateInputs(SimulationState& currentState, double current_time);
-    void forceReadInput(const std::string& source_name);
-    void forceReadAllInputs();
+    /**
+     * @brief Initialize the input manager
+     * @param ws_url WebSocket URL for the Stream Handler
+     * @return True if initialization was successful
+     */
+    bool initialize(const std::string& ws_url = "ws://localhost:3000");
     
-    // Manual input injection (for testing/debugging)
-    void injectInput(const std::string& source_name, double value, double timestamp = -1);
+    /**
+     * @brief Connect to the Stream Handler
+     * @return True if connection was successful
+     */
+    bool connect();
     
-    // Input source management
-    std::vector<InputSource> getInputSources() const;
-    InputSource* getInputSource(const std::string& source_name);
-    bool enableInput(const std::string& source_name, bool enable = true);
+    /**
+     * @brief Disconnect from the Stream Handler
+     */
+    void disconnect();
     
-    // Callbacks
-    void setInputCallback(InputCallback callback);
-    void setErrorCallback(InputErrorCallback callback);
+    /**
+     * @brief Register a new input stream
+     * @param stream_id Unique identifier for the stream
+     * @param name Human-readable name for the stream
+     * @param datatype Data type (float, vector3, etc.)
+     * @param unit Unit of measurement
+     * @param metadata Additional metadata
+     * @return True if registration was successful
+     */
+    bool registerStream(const std::string& stream_id, 
+                        const std::string& name,
+                        const std::string& datatype,
+                        const std::string& unit,
+                        const std::map<std::string, std::string>& metadata = {});
     
-    // Statistics and monitoring
-    std::map<std::string, double> getInputStatistics() const; // Last values, update frequencies, etc.
-    bool isInputHealthy(const std::string& source_name) const;
-    std::vector<std::string> getFailedInputs() const;
+    /**
+     * @brief Update a stream value
+     * @param stream_id Stream identifier
+     * @param value New value
+     * @return True if update was successful
+     */
+    bool updateStreamValue(const std::string& stream_id, double value);
     
-    // Control
-    void start();
-    void stop();
-    bool isRunning() const;
+    /**
+     * @brief Update a vector stream value
+     * @param stream_id Stream identifier
+     * @param values Vector of values
+     * @return True if update was successful
+     */
+    bool updateStreamVectorValue(const std::string& stream_id, const std::vector<double>& values);
     
+    /**
+     * @brief Get the latest value for a stream
+     * @param stream_id Stream identifier
+     * @param default_value Default value if stream not found
+     * @return The latest value or default_value if not found
+     */
+    double getStreamValue(const std::string& stream_id, double default_value = 0.0) const;
+    
+    /**
+     * @brief Get the latest vector value for a stream
+     * @param stream_id Stream identifier
+     * @return The latest vector value or empty vector if not found
+     */
+    std::vector<double> getStreamVectorValue(const std::string& stream_id) const;
+    
+    /**
+     * @brief Register a callback for stream updates
+     * @param stream_id Stream identifier
+     * @param callback Function to call when stream is updated
+     * @return True if registration was successful
+     */
+    bool registerCallback(const std::string& stream_id, InputCallback callback);
+    
+    /**
+     * @brief Send a control command to the simulation
+     * @param command Command name
+     * @param params Command parameters
+     * @return True if command was sent successfully
+     */
+    bool sendCommand(const std::string& command, const std::map<std::string, std::string>& params = {});
+    
+    /**
+     * @brief Update the simulation status
+     * @param status New status
+     * @return True if status was updated successfully
+     */
+    bool updateStatus(const std::string& status);
+    
+    /**
+     * @brief Process incoming messages
+     * @param message JSON message string
+     */
+    void processMessage(const std::string& message);
+    
+    /**
+     * @brief Check if the input manager is connected
+     * @return True if connected
+     */
+    bool isConnected() const { return connected_; }
+    
+    /**
+     * @brief Get the simulation ID
+     * @return Simulation ID
+     */
+    std::string getSimulationId() const { return simulation_id_; }
+
 private:
-    const ModelConfig& modelConfig_;
-    IPlatform* platform_;
-    std::vector<InputSource> inputSources_;
+    // WebSocket client implementation (platform-specific)
+    class WebSocketClient;
+    std::unique_ptr<WebSocketClient> ws_client_;
     
-    // State tracking
-    bool running_ = false;
-    double lastUpdateTime_ = 0.0;
+    // Simulation information
+    std::string simulation_id_;
+    std::atomic<bool> connected_;
+    std::atomic<bool> running_;
     
-    // Callbacks
-    InputCallback inputCallback_;
-    InputErrorCallback errorCallback_;
+    // Input data storage
+    std::map<std::string, InputData> input_data_;
+    std::map<std::string, std::vector<InputCallback>> callbacks_;
     
-    // Internal helpers
-    bool readSensorInput(InputSource& source, double current_time);
-    bool readControlInput(InputSource& source, double current_time);
-    bool readSimulationInput(InputSource& source, double current_time);
-    bool readStreamInput(InputSource& source, double current_time);
+    // Thread safety
+    mutable std::mutex data_mutex_;
+    mutable std::mutex callback_mutex_;
     
-    // Interface-specific readers
-    bool readSerialInput(InputSource& source);
-    bool readAnalogInput(InputSource& source);
-    bool readDigitalInput(InputSource& source);
-    bool readCANInput(InputSource& source);
-    bool readWebSocketInput(InputSource& source);
+    // Message processing thread
+    std::thread message_thread_;
     
-    // Validation and error handling
-    bool validateInputSource(const InputSource& source) const;
-    void handleInputError(const std::string& source_name, const std::string& error);
-    
-    // Timing helpers
-    bool shouldUpdate(const InputSource& source, double current_time) const;
-    void updateSourceTimestamp(InputSource& source, double current_time);
+    // Internal methods
+    void messageLoop();
+    void notifyCallbacks(const std::string& stream_id, const InputData& data);
 };
 
-} // namespace parsec 
+} // namespace parsec
+
+#endif // PARSEC_INPUT_MANAGER_H

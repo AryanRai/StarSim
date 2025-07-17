@@ -77,25 +77,26 @@ This document outlines the detailed implementation plan for completing the StarS
   - WebSocket client library (e.g., websocketpp, libwebsockets)
   - JSON serialization library (nlohmann/json - already available)
 
-#### 2. **Physics Hardware Engine Module**
+#### 2. **Stream-to-Variable Mapping System**
 - **Status**: 🚧 **Missing - Critical**
 - **Priority**: **P0 - Blocking**
-- **Location**: `en/DynamicModules/hw_starsim_physics.py`
-- **Description**: Bridge between ParsecCore and Comms Engine system
+- **Location**: `int/StarSim/ParsecCore/include/parsec/InputManager.h`
+- **Description**: Direct mapping from Stream Handler streams to StarModel variables
 - **Requirements**:
-  - Python wrapper for ParsecCore C++ library
-  - Stream format conversion
-  - Hardware abstraction for physics sensors
-  - Real-time data synchronization
+  - Stream subscription system in InputManager
+  - Variable mapping configuration in starmodel.json
+  - Real-time stream data integration with physics simulation
+  - Bidirectional communication (receive inputs, publish outputs)
 
 #### 3. **Real Data Integration**
 - **Status**: 🚧 **Demo Data Only**
 - **Priority**: **P1 - High**
 - **Description**: Replace dummy data with real ParsecCore simulation feeds
 - **Requirements**:
-  - Data format standardization
+  - Direct C++ to AriesUI data flow via Stream Handler
   - Performance optimization for real-time streaming
   - Error handling for simulation failures
+  - No Python wrapper needed - pure C++ WebSocket client
 
 ---
 
@@ -165,25 +166,25 @@ This document outlines the detailed implementation plan for completing the StarS
   - Unit tests for WebSocket client functionality
   - Integration test with Stream Handler server
 
-#### **Week 3-4: Physics Hardware Engine Module**
-- **Goal**: Bridge ParsecCore with Comms Engine
+#### **Week 3-4: Stream-to-Variable Mapping System**
+- **Goal**: Direct stream integration with starmodel variables
 - **Tasks**:
-  1. Create Python bindings for ParsecCore
-  2. Implement hardware engine module
-  3. Add stream format conversion
-  4. Integrate with existing Engine system
-  5. Test real-time data flow
+  1. Extend starmodel.json format to include stream mappings
+  2. Implement stream subscription system in InputManager
+  3. Add variable mapping and real-time updates
+  4. Create bidirectional communication (inputs/outputs)
+  5. Test real-time stream integration
 - **Deliverables**:
-  - `hw_starsim_physics.py` module
-  - Python bindings for ParsecCore
-  - Integration tests
+  - Extended starmodel.json format with stream mappings
+  - Stream subscription system in InputManager
+  - Integration tests with Stream Handler
 
 #### **Week 5-6: Real Data Integration**
 - **Goal**: Replace dummy data with real simulations
 - **Tasks**:
-  1. Update SpringDamper widget for real data
+  1. Update SpringDamper widget for real ParsecCore data
   2. Test all physics widgets with real streams
-  3. Performance optimization
+  3. Performance optimization for direct C++ communication
   4. Error handling and recovery
   5. End-to-end integration testing
 - **Deliverables**:
@@ -260,8 +261,8 @@ This document outlines the detailed implementation plan for completing the StarS
 - **Note**: No HTTP server needed - InputManager is a client that connects to Stream Handler
 
 #### **Python Libraries**
-- **C++ Bindings**: `pybind11` or `ctypes`
-- **WebSocket Client**: `websocket-client` or `websockets`
+- **Note**: No Python wrapper needed for ParsecCore
+- **WebSocket Client**: `websocket-client` or `websockets` (for Engine modules only)
 - **Async Support**: `asyncio` (already used in Engine)
 
 #### **JavaScript/TypeScript Libraries**
@@ -272,16 +273,17 @@ This document outlines the detailed implementation plan for completing the StarS
 ### **Data Flow Architecture**
 
 ```
-ParsecCore (C++) → InputManager (C++ WS Client) → Stream Handler (WS Server) → AriesUI (WS Client)
+ParsecCore (C++) ↔ InputManager (C++ WS Client) ↔ Stream Handler (WS Server) ↔ AriesUI (WS Client)
                                                         ↑
                                            Hardware Engine (Publisher) ← Engine System ← Hardware Sensors
 ```
 
 **Key Architecture Points:**
 - **Stream Handler**: Single WebSocket server (the hub)
-- **InputManager**: WebSocket client that subscribes to Stream Handler
+- **InputManager**: C++ WebSocket client that subscribes to streams and maps them to starmodel variables
 - **AriesUI**: WebSocket client that subscribes to Stream Handler  
 - **Hardware Engine**: Publishes to Stream Handler via Engine system
+- **No Python wrapper needed**: Direct C++ to Stream Handler communication
 
 ### **Performance Requirements**
 
@@ -296,7 +298,7 @@ ParsecCore (C++) → InputManager (C++ WS Client) → Stream Handler (WS Server)
 
 ### **Physics Simulation Configuration**
 
-#### **Model Definition Format**
+#### **Extended Model Definition Format with Stream Mappings**
 ```json
 {
   "model_name": "SpringMassSystem",
@@ -309,7 +311,18 @@ ParsecCore (C++) → InputManager (C++ WS Client) → Stream Handler (WS Server)
     "d(x)/dt = v",
     "d(v)/dt = -k * x"
   ],
-  "solver": {"method": "Euler", "dt": 0.001}
+  "solver": {"method": "Euler", "dt": 0.001},
+  "stream_mappings": {
+    "inputs": {
+      "k": {"stream_id": "spring_constant", "type": "parameter"},
+      "mass": {"stream_id": "mass_value", "type": "parameter"}
+    },
+    "outputs": {
+      "x": {"stream_id": "position", "name": "Position", "unit": "m"},
+      "v": {"stream_id": "velocity", "name": "Velocity", "unit": "m/s"},
+      "energy": {"stream_id": "total_energy", "name": "Total Energy", "unit": "J"}
+    }
+  }
 }
 ```
 

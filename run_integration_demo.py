@@ -34,17 +34,29 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 def start_stream_handler():
     """Start the Stream Handler with physics support"""
     try:
-        # Import the stream handler module
-        sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".."))
-        from sh.stream_handlerv3_0_physics import app
-        
         print("\n[Stream Handler] Starting Stream Handler v3.0 with Physics Support...")
-        app.listen(3000, lambda config: print(f"[Stream Handler] Listening on http://localhost:3000"))
-        app.run()
-    except ImportError as e:
-        print(f"\n[ERROR] Failed to import Stream Handler: {e}")
-        print("Make sure you're running this script from the StarSim directory")
-        sys.exit(1)
+        
+        # Instead of trying to import and run in the same thread, just launch it as a subprocess
+        sh_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "sh")
+        sh_script = os.path.join(sh_dir, "stream_handlerv3.0_physics.py")
+        
+        if not os.path.exists(sh_script):
+            print(f"\n[ERROR] Stream Handler not found at: {sh_script}")
+            sys.exit(1)
+        
+        # Start stream handler in a separate process
+        process = subprocess.Popen([
+            sys.executable, sh_script
+        ], cwd=sh_dir)
+        
+        print(f"[Stream Handler] Started in separate process (PID: {process.pid})")
+        print("[Stream Handler] Listening on http://localhost:3000")
+        
+        # Wait a moment for it to start
+        time.sleep(2)
+        
+        return process
+        
     except Exception as e:
         print(f"\n[ERROR] Failed to start Stream Handler: {e}")
         sys.exit(1)
@@ -61,7 +73,7 @@ def build_cpp_example(build_dir):
     # Run CMake
     cmake_cmd = ["cmake", ".."]
     if platform.system() == "Windows":
-        cmake_cmd = ["cmake", "..", "-G", "Visual Studio 16 2019"]
+        cmake_cmd = ["cmake", "..", "-G", "Visual Studio 17 2022"]
     
     try:
         subprocess.run(cmake_cmd, cwd=build_path, check=True)
@@ -172,23 +184,17 @@ def load_starsim_demo_layout():
         return False
 
 def main():
-    parser = argparse.ArgumentParser(description="StarSim - Comms Alpha v3.0 Integration Demo")
-    parser.add_argument("--no-ui", action="store_true", help="Run without starting AriesUI")
+    parser = argparse.ArgumentParser(description="StarSim Physics Engine")
     parser.add_argument("--build-dir", default="./ParsecCore/build", help="Path to ParsecCore build directory")
     args = parser.parse_args()
     
     # Print banner
     print("=" * 80)
-    print("StarSim - Comms Alpha v3.0 Integration Demo")
+    print("StarSim Physics Engine")
     print("=" * 80)
-    
-    # Start Stream Handler in a separate thread
-    print("\n[Setup] Starting Stream Handler...")
-    sh_thread = threading.Thread(target=start_stream_handler, daemon=True)
-    sh_thread.start()
-    
-    # Wait for Stream Handler to start
-    time.sleep(2)
+    print("\nThis will only start the StarSim physics engine.")
+    print("Start the Stream Handler and AriesUI manually using HyperThreader.")
+    print()
     
     # Build C++ example if needed
     build_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), args.build_dir))
@@ -197,23 +203,16 @@ def main():
             print("\n[ERROR] Failed to build C++ example")
             return
     
-    # Start AriesUI if requested
-    if not args.no_ui:
-        if not start_ariesui():
-            print("\n[WARNING] Failed to start AriesUI")
-        else:
-            load_starsim_demo_layout()
+    print("\n[StarSim] Starting physics simulation...")
+    print("[StarSim] The simulation will connect to Stream Handler at ws://localhost:3000")
+    print("[StarSim] Make sure the Stream Handler is running before starting this.")
+    print()
     
-    # Run C++ example
+    # Run C++ example (StarSim physics engine)
     run_cpp_example(build_dir)
     
-    # Keep running until user interrupts
-    try:
-        print("\n[Demo] Integration demo running. Press Ctrl+C to exit")
-        while sh_thread.is_alive():
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\n[Demo] Exiting...")
+    print("\n[StarSim] Physics simulation completed.")
+    print("You can restart it anytime by running this script again.")
 
 if __name__ == "__main__":
     main()

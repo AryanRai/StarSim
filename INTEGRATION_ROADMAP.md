@@ -9,7 +9,7 @@ This document outlines the detailed implementation plan for completing the StarS
 ### ✅ **Completed Components (70%)**
 
 #### 1. **Stream Handler v3.0 with Physics Support**
-- **Status**: ✅ **Production Ready**
+- **Status**: ✅ **Production Ready**   
 - **Location**: `sh/stream_handlerv3.0_physics.py`
 - **Features**:
   - Physics-specific WebSocket channels
@@ -50,7 +50,7 @@ This document outlines the detailed implementation plan for completing the StarS
 
 #### 5. **Integration Demo Framework**
 - **Status**: ✅ **Framework Complete**
-- **Location**: `int/StarSim/run_integration_demo.py`
+- **Location**: `int/StarSim/run_integration_demo.py`   currently run integration script is random and the functionality to run using commandline and thru tinkerer ui is present in hyperthreder.py so that can be modified and added to for starsim
 - **Features**:
   - Automated build system
   - Multi-component orchestration
@@ -97,6 +97,13 @@ This document outlines the detailed implementation plan for completing the StarS
   - Performance optimization for real-time streaming
   - Error handling for simulation failures
   - No Python wrapper needed - pure C++ WebSocket client
+
+  other human feedback
+
+  the physics and normal steams should be the same, lets combine them and just modify stream_handler to handle normal and physics stream in similar format and streams, just modify the protocol int\chyappy to include the new unified chyappy protocol to handle both physics and normal streams which is compatible with ariesui(try not to change) and starsim without redudency, maintain consistency and update chyappy with a new unifed json version. before this you might need to setup as git submodule the chyappy project
+
+  the functionality inside int/StarSim/run_integration_demo.py needs to be implemented not exactly but needs to be implemented in hyperthreder.py since running starsim should be able to be handled directly using the basic tkinter ui and also add cmd options to hyperthreder so u can run it. make hyperthreader extendable also such that i can keep adding more modules like ariesui, sh or en and now StarSim
+
 
 ---
 
@@ -146,6 +153,12 @@ This document outlines the detailed implementation plan for completing the StarS
   - Sensor calibration interfaces
   - Real-time hardware synchronization
   - Safety and error handling
+
+human feeback
+
+add int\StarSim\ParsecCore\examples\setup_alpaca_api.py alpaca api examples as streams as new dynamicmodule to en dynamic modules so they can feed into en -> sh -> starsim -> parsecCore 
+
+add trading core ariesmods to ariesui
 
 ---
 

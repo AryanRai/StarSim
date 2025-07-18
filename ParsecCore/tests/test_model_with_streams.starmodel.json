@@ -1,0 +1,92 @@
+{
+  "model_name": "SpringMassWithStreams",
+  "version": "1.2",
+  "metadata": {
+    "author": "ParsecCore Team",
+    "description": "Spring-mass system with Stream Handler integration"
+  },
+  "variables": [
+    { "name": "x", "unit": "m", "type": "dynamic", "initial": 0.5 },
+    { "name": "v", "unit": "m/s", "type": "dynamic", "initial": 0.0 },
+    { "name": "m", "unit": "kg", "type": "constant", "value": 2.0 },
+    { "name": "k", "unit": "N/m", "type": "constant", "value": 10.0 },
+    { "name": "F_ext", "unit": "N", "type": "input", "placeholder": "external_force_stream" },
+    { "name": "energy", "unit": "J", "type": "derived", "expression": "0.5 * m * v^2 + 0.5 * k * x^2" }
+  ],
+  "equations": [
+    "d(v)/dt = (-k * x + F_ext) / m",
+    "d(x)/dt = v"
+  ],
+  "solver": {
+    "method": "Euler",
+    "dt": 0.001,
+    "duration": 5.0
+  },
+  "outputs": ["x", "v", "energy"],
+  "stream_mappings": {
+    "inputs": {
+      "k": {
+        "stream_id": "spring_constant",
+        "datatype": "float",
+        "sensor_type": "P",
+        "sensor_id": 1,
+        "description": "Spring constant parameter"
+      },
+      "m": {
+        "stream_id": "mass_value",
+        "datatype": "float",
+        "sensor_type": "P",
+        "sensor_id": 2,
+        "description": "Mass parameter"
+      },
+      "F_ext": {
+        "stream_id": "external_force",
+        "datatype": "float",
+        "sensor_type": "F",
+        "sensor_id": 1,
+        "description": "External force input"
+      }
+    },
+    "outputs": {
+      "x": {
+        "stream_id": "position",
+        "name": "Position",
+        "datatype": "float",
+        "unit": "m",
+        "sensor_type": "P",
+        "sensor_id": 10,
+        "update_rate": 100,
+        "description": "Mass position"
+      },
+      "v": {
+        "stream_id": "velocity",
+        "name": "Velocity",
+        "datatype": "float",
+        "unit": "m/s",
+        "sensor_type": "V",
+        "sensor_id": 10,
+        "update_rate": 100,
+        "description": "Mass velocity"
+      },
+      "energy": {
+        "stream_id": "total_energy",
+        "name": "Total Energy",
+        "datatype": "float",
+        "unit": "J",
+        "sensor_type": "E",
+        "sensor_id": 10,
+        "update_rate": 50,
+        "description": "System total energy"
+      }
+    }
+  },
+  "simulation_config": {
+    "simulation_id": "spring_mass_demo",
+    "real_time": true,
+    "auto_start": false,
+    "stream_handler": {
+      "url": "ws://localhost:3000",
+      "channels": ["physics", "broadcast"]
+    }
+  }
+}

@@ -179,6 +179,7 @@ private:
     // Internal methods
     void messageLoop();
     void notifyCallbacks(const std::string& stream_id, const InputData& data);
+    std::string getCurrentTimestamp() const;
 };
 
 } // namespace parsec

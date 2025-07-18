@@ -3,305 +3,144 @@
 #include <chrono>
 #include <sstream>
 #include <iomanip>
+#include <thread>
+#include <websocketpp/config/asio_no_tls_client.hpp>
+#include <websocketpp/client.hpp>
+#include <nlohmann/json.hpp>
 
-// Include platform-specific WebSocket implementation
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
-#else
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#endif
-
-// Include JSON library (using nlohmann/json)
-#include "nlohmann/json.hpp"
 using json = nlohmann::json;
 
 namespace parsec {
 
-// WebSocket client implementation
+// WebSocket client implementation using websocketpp
 class InputManager::WebSocketClient {
 public:
-    WebSocketClient(InputManager* manager) : manager_(manager), socket_(-1) {}
+    using client = websocketpp::client<websocketpp::config::asio_client>;
+    using message_ptr = client::message_ptr;
+    using connection_hdl = websocketpp::connection_hdl;
+    
+    WebSocketClient(InputManager* manager) : manager_(manager), connected_(false) {
+        // Initialize websocket client
+        client_.clear_access_channels(websocketpp::log::alevel::all);
+        client_.clear_error_channels(websocketpp::log::elevel::all);
+        
+        client_.init_asio();
+        client_.set_reuse_addr(true);
+        
+        // Set handlers
+        client_.set_open_handler([this](connection_hdl hdl) {
+            std::cout << "WebSocket connection opened" << std::endl;
+            connected_ = true;
+            connection_hdl_ = hdl;
+            
+            // Subscribe to physics simulation channel
+            json subscribe_msg = {
+                {"type", "subscribe"},
+                {"channel", "physics"},
+                {"simulation_id", manager_->getSimulationId()}
+            };
+            
+            client_.send(hdl, subscribe_msg.dump(), websocketpp::frame::opcode::text);
+        });
+        
+        client_.set_close_handler([this](connection_hdl hdl) {
+            std::cout << "WebSocket connection closed" << std::endl;
+            connected_ = false;
+        });
+        
+        client_.set_message_handler([this](connection_hdl hdl, message_ptr msg) {
+            if (manager_) {
+                manager_->processMessage(msg->get_payload());
+            }
+        });
+        
+        client_.set_fail_handler([this](connection_hdl hdl) {
+            std::cout << "WebSocket connection failed" << std::endl;
+            connected_ = false;
+        });
+    }
     
     ~WebSocketClient() {
         disconnect();
     }
     
     bool connect(const std::string& url) {
-        // Parse URL (simple parsing, assumes format "ws://host:port")
-        std::string host;
-        int port = 80;
-        
-        size_t protocol_end = url.find("://");
-        if (protocol_end != std::string::npos) {
-            size_t host_start = protocol_end + 3;
-            size_t port_start = url.find(":", host_start);
+        try {
+            websocketpp::lib::error_code ec;
+            client::connection_ptr con = client_.get_connection(url, ec);
             
-            if (port_start != std::string::npos) {
-                host = url.substr(host_start, port_start - host_start);
-                port = std::stoi(url.substr(port_start + 1));
-            } else {
-                host = url.substr(host_start);
+            if (ec) {
+                std::cout << "Connection error: " << ec.message() << std::endl;
+                return false;
             }
-        } else {
-            host = url;
-        }
-        
-        // Initialize socket library on Windows
-#ifdef _WIN32
-        WSADATA wsaData;
-        if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-            std::cerr << "Failed to initialize Winsock" << std::endl;
+            
+            client_.connect(con);
+            
+            // Start the client thread
+            client_thread_ = std::thread([this]() {
+                client_.run();
+            });
+            
+            // Wait for connection to be established
+            int wait_attempts = 0;
+            while (!connected_ && wait_attempts < 50) {  // Wait up to 5 seconds
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                wait_attempts++;
+            }
+            
+            if (connected_) {
+                std::cout << "WebSocket connection established successfully!" << std::endl;
+            } else {
+                std::cout << "WebSocket connection timeout - unable to establish connection" << std::endl;
+            }
+            
+            return connected_;
+        } catch (const std::exception& e) {
+            std::cout << "WebSocket connection exception: " << e.what() << std::endl;
             return false;
         }
-#endif
-        
-        // Create socket
-        socket_ = socket(AF_INET, SOCK_STREAM, 0);
-        if (socket_ < 0) {
-            std::cerr << "Failed to create socket" << std::endl;
-            return false;
-        }
-        
-        // Connect to server
-        struct sockaddr_in server_addr;
-        server_addr.sin_family = AF_INET;
-        server_addr.sin_port = htons(port);
-        
-#ifdef _WIN32
-        InetPton(AF_INET, host.c_str(), &server_addr.sin_addr);
-        if (::connect(socket_, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-#else
-        inet_pton(AF_INET, host.c_str(), &server_addr.sin_addr);
-        if (::connect(socket_, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-#endif
-            std::cerr << "Connection failed" << std::endl;
-            return false;
-        }
-        
-        // Perform WebSocket handshake
-        std::string handshake = 
-            "GET / HTTP/1.1\r\n"
-            "Host: " + host + ":" + std::to_string(port) + "\r\n"
-            "Upgrade: websocket\r\n"
-            "Connection: Upgrade\r\n"
-            "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-            "Sec-WebSocket-Version: 13\r\n"
-            "\r\n";
-        
-#ifdef _WIN32
-        if (send(socket_, handshake.c_str(), handshake.length(), 0) < 0) {
-#else
-        if (send(socket_, handshake.c_str(), handshake.length(), 0) < 0) {
-#endif
-            std::cerr << "Failed to send handshake" << std::endl;
-            return false;
-        }
-        
-        // Receive handshake response
-        char buffer[1024] = {0};
-#ifdef _WIN32
-        if (recv(socket_, buffer, sizeof(buffer), 0) < 0) {
-#else
-        if (recv(socket_, buffer, sizeof(buffer), 0) < 0) {
-#endif
-            std::cerr << "Failed to receive handshake response" << std::endl;
-            return false;
-        }
-        
-        // Check if handshake was successful
-        if (std::string(buffer).find("HTTP/1.1 101") == std::string::npos) {
-            std::cerr << "WebSocket handshake failed" << std::endl;
-            return false;
-        }
-        
-        std::cout << "WebSocket connection established" << std::endl;
-        return true;
     }
     
     void disconnect() {
-        if (socket_ >= 0) {
-#ifdef _WIN32
-            closesocket(socket_);
-            WSACleanup();
-#else
-            close(socket_);
-#endif
-            socket_ = -1;
+        if (connected_) {
+            client_.close(connection_hdl_, websocketpp::close::status::normal, "Disconnecting");
+            connected_ = false;
+        }
+        
+        client_.stop();
+        
+        if (client_thread_.joinable()) {
+            client_thread_.join();
         }
     }
     
     bool send(const std::string& message) {
-        // Simple WebSocket frame encoding (no masking)
-        std::vector<uint8_t> frame;
-        
-        // Add FIN and opcode (0x81 = FIN + text)
-        frame.push_back(0x81);
-        
-        // Add payload length
-        if (message.length() < 126) {
-            frame.push_back(message.length());
-        } else if (message.length() < 65536) {
-            frame.push_back(126);
-            frame.push_back((message.length() >> 8) & 0xFF);
-            frame.push_back(message.length() & 0xFF);
-        } else {
-            frame.push_back(127);
-            for (int i = 7; i >= 0; --i) {
-                frame.push_back((message.length() >> (i * 8)) & 0xFF);
-            }
-        }
-        
-        // Add payload
-        for (char c : message) {
-            frame.push_back(c);
-        }
-        
-#ifdef _WIN32
-        if (send(socket_, (const char*)frame.data(), frame.size(), 0) < 0) {
-#else
-        if (send(socket_, frame.data(), frame.size(), 0) < 0) {
-#endif
-            std::cerr << "Failed to send message" << std::endl;
+        if (!connected_) {
             return false;
         }
         
-        return true;
+        try {
+            client_.send(connection_hdl_, message, websocketpp::frame::opcode::text);
+            return true;
+        } catch (const std::exception& e) {
+            std::cout << "WebSocket send error: " << e.what() << std::endl;
+            return false;
+        }
     }
     
-    bool receive(std::string& message) {
-        // Receive WebSocket frame header
-        uint8_t header[2];
-#ifdef _WIN32
-        if (recv(socket_, (char*)header, 2, 0) != 2) {
-#else
-        if (recv(socket_, header, 2, 0) != 2) {
-#endif
-            return false;
-        }
-        
-        // Parse header
-        bool fin = (header[0] & 0x80) != 0;
-        uint8_t opcode = header[0] & 0x0F;
-        bool masked = (header[1] & 0x80) != 0;
-        uint64_t payload_length = header[1] & 0x7F;
-        
-        // Handle extended payload length
-        if (payload_length == 126) {
-            uint8_t length_bytes[2];
-#ifdef _WIN32
-            if (recv(socket_, (char*)length_bytes, 2, 0) != 2) {
-#else
-            if (recv(socket_, length_bytes, 2, 0) != 2) {
-#endif
-                return false;
-            }
-            payload_length = (length_bytes[0] << 8) | length_bytes[1];
-        } else if (payload_length == 127) {
-            uint8_t length_bytes[8];
-#ifdef _WIN32
-            if (recv(socket_, (char*)length_bytes, 8, 0) != 8) {
-#else
-            if (recv(socket_, length_bytes, 8, 0) != 8) {
-#endif
-                return false;
-            }
-            payload_length = 0;
-            for (int i = 0; i < 8; ++i) {
-                payload_length = (payload_length << 8) | length_bytes[i];
-            }
-        }
-        
-        // Read masking key if present
-        uint8_t masking_key[4] = {0};
-        if (masked) {
-#ifdef _WIN32
-            if (recv(socket_, (char*)masking_key, 4, 0) != 4) {
-#else
-            if (recv(socket_, masking_key, 4, 0) != 4) {
-#endif
-                return false;
-            }
-        }
-        
-        // Read payload
-        message.resize(payload_length);
-        size_t bytes_read = 0;
-        while (bytes_read < payload_length) {
-            int result;
-#ifdef _WIN32
-            result = recv(socket_, (char*)&message[bytes_read], payload_length - bytes_read, 0);
-#else
-            result = recv(socket_, &message[bytes_read], payload_length - bytes_read, 0);
-#endif
-            if (result <= 0) {
-                return false;
-            }
-            bytes_read += result;
-        }
-        
-        // Unmask payload if necessary
-        if (masked) {
-            for (size_t i = 0; i < payload_length; ++i) {
-                message[i] ^= masking_key[i % 4];
-            }
-        }
-        
-        // Handle control frames
-        if (opcode == 0x8) {
-            // Close frame
-            disconnect();
-            return false;
-        } else if (opcode == 0x9) {
-            // Ping frame, respond with pong
-            std::string pong_payload = message;
-            message.clear();
-            
-            // Send pong frame
-            std::vector<uint8_t> pong_frame;
-            pong_frame.push_back(0x8A);  // FIN + pong opcode
-            pong_frame.push_back(pong_payload.length());
-            for (char c : pong_payload) {
-                pong_frame.push_back(c);
-            }
-            
-#ifdef _WIN32
-            send(socket_, (const char*)pong_frame.data(), pong_frame.size(), 0);
-#else
-            send(socket_, pong_frame.data(), pong_frame.size(), 0);
-#endif
-            
-            // Continue receiving
-            return receive(message);
-        } else if (opcode == 0xA) {
-            // Pong frame, ignore
-            message.clear();
-            return receive(message);
-        }
-        
-        // Process fragmented messages
-        if (!fin) {
-            std::string fragment;
-            if (!receive(fragment)) {
-                return false;
-            }
-            message += fragment;
-        }
-        
-        return true;
+    bool isConnected() const {
+        return connected_;
     }
     
 private:
     InputManager* manager_;
-    int socket_;
+    client client_;
+    connection_hdl connection_hdl_;
+    std::atomic<bool> connected_;
+    std::thread client_thread_;
 };
 
-// InputManager implementation
-InputManager::InputManager(const std::string& simulation_id)
+InputManager::InputManager(const std::string& simulation_id) 
     : simulation_id_(simulation_id), connected_(false), running_(false) {
     ws_client_ = std::make_unique<WebSocketClient>(this);
 }
@@ -311,54 +150,68 @@ InputManager::~InputManager() {
 }
 
 bool InputManager::initialize(const std::string& ws_url) {
-    std::cout << "Initializing InputManager for simulation " << simulation_id_ << std::endl;
-    return connect();
-}
-
-bool InputManager::connect() {
     if (connected_) {
+        std::cout << "InputManager already initialized" << std::endl;
         return true;
     }
     
-    if (!ws_client_->connect("ws://localhost:3000")) {
-        std::cerr << "Failed to connect to Stream Handler" << std::endl;
+    std::cout << "Initializing InputManager for simulation: " << simulation_id_ << std::endl;
+    std::cout << "WebSocket URL: " << ws_url << std::endl;
+    
+    return ws_client_->connect(ws_url);
+}
+
+bool InputManager::connect() {
+    if (!ws_client_) {
+        std::cout << "WebSocket client not initialized" << std::endl;
         return false;
     }
     
-    connected_ = true;
-    running_ = true;
+    // Wait for WebSocket connection to be established
+    int wait_attempts = 0;
+    std::cout << "[DEBUG] Starting wait loop for WebSocket connection..." << std::endl;
+    while (!ws_client_->isConnected() && wait_attempts < 50) {  // Wait up to 5 seconds
+        std::cout << "[DEBUG] Wait attempt " << wait_attempts << ", isConnected=" << ws_client_->isConnected() << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        wait_attempts++;
+    }
     
-    // Start message processing thread
-    message_thread_ = std::thread(&InputManager::messageLoop, this);
+    connected_ = ws_client_->isConnected();
+    std::cout << "[DEBUG] InputManager::connect() - wait_attempts=" << wait_attempts << ", ws_client_->isConnected()=" << ws_client_->isConnected() << ", connected_=" << connected_ << std::endl;
     
-    // Register simulation with Stream Handler
-    json registration = {
-        {"type", "physics_simulation"},
-        {"action", "register"},
-        {"simulation_id", simulation_id_},
-        {"config", {
-            {"solver", "RK4"},
-            {"dt", 0.001},
-            {"max_iterations", 1000000}
-        }},
-        {"msg-sent-timestamp", getCurrentTimestamp()}
-    };
+    if (connected_) {
+        // Register this simulation with the stream handler
+        json register_msg = {
+            {"type", "physics_simulation"},
+            {"action", "register"},
+            {"simulation_id", simulation_id_},
+            {"config", {
+                {"name", "ParsecCore Simulation"},
+                {"status", "initializing"}
+            }}
+        };
+        
+        ws_client_->send(register_msg.dump());
+        
+        // Start message processing
+        running_ = true;
+        message_thread_ = std::thread(&InputManager::messageLoop, this);
+    }
     
-    return ws_client_->send(registration.dump());
+    return connected_;
 }
 
 void InputManager::disconnect() {
-    if (!connected_) {
-        return;
-    }
-    
     running_ = false;
     
     if (message_thread_.joinable()) {
         message_thread_.join();
     }
     
-    ws_client_->disconnect();
+    if (ws_client_) {
+        ws_client_->disconnect();
+    }
+    
     connected_ = false;
 }
 
@@ -367,12 +220,8 @@ bool InputManager::registerStream(const std::string& stream_id,
                                  const std::string& datatype,
                                  const std::string& unit,
                                  const std::map<std::string, std::string>& metadata) {
-    if (!connected_) {
-        std::cerr << "Not connected to Stream Handler" << std::endl;
-        return false;
-    }
+    std::lock_guard<std::mutex> lock(data_mutex_);
     
-    // Create input data entry
     InputData data;
     data.id = stream_id;
     data.name = name;
@@ -380,252 +229,263 @@ bool InputManager::registerStream(const std::string& stream_id,
     data.unit = unit;
     data.value = 0.0;
     data.metadata = metadata;
-    data.timestamp = getCurrentTimestamp();
     
-    // Store locally
-    {
-        std::lock_guard<std::mutex> lock(data_mutex_);
-        input_data_[stream_id] = data;
+    // Generate timestamp
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    std::ostringstream oss;
+    oss << std::put_time(std::gmtime(&time_t), "%Y-%m-%dT%H:%M:%S");
+    data.timestamp = oss.str();
+    
+    input_data_[stream_id] = data;
+    
+    // Send stream registration to stream handler
+    bool ws_connected = (ws_client_ && ws_client_->isConnected());
+    std::cout << "[DEBUG] Attempting to send stream registration. connected_=" << connected_ << ", ws_connected=" << ws_connected << std::endl;
+    if (ws_connected) {
+        json stream_msg = {
+            {"type", "physics_simulation"},
+            {"action", "register_stream"},
+            {"simulation_id", simulation_id_},
+            {"stream_id", stream_id},
+            {"stream_data", {
+                {"name", name},
+                {"datatype", datatype},
+                {"unit", unit},
+                {"value", 0.0},
+                {"status", "active"},
+                {"timestamp", data.timestamp}
+            }}
+        };
+        
+        std::cout << "[DEBUG] Sending stream registration: " << stream_msg.dump() << std::endl;
+        bool sent = ws_client_->send(stream_msg.dump());
+        std::cout << "[DEBUG] Stream registration sent: " << sent << std::endl;
+    } else {
+        std::cout << "[DEBUG] Not connected, skipping stream registration" << std::endl;
     }
     
-    // Send registration to Stream Handler
-    json metadata_json = json::object();
-    for (const auto& [key, value] : metadata) {
-        metadata_json[key] = value;
-    }
-    
-    json registration = {
-        {"type", "physics_simulation"},
-        {"action", "update"},
-        {"simulation_id", simulation_id_},
-        {"stream_id", stream_id},
-        {"data", {
-            {"name", name},
-            {"datatype", datatype},
-            {"unit", unit},
-            {"value", 0.0},
-            {"metadata", metadata_json},
-            {"timestamp", data.timestamp}
-        }},
-        {"msg-sent-timestamp", getCurrentTimestamp()}
-    };
-    
-    return ws_client_->send(registration.dump());
+    std::cout << "Registered stream: " << stream_id << " (" << name << ")" << std::endl;
+    return true;
 }
 
 bool InputManager::updateStreamValue(const std::string& stream_id, double value) {
-    if (!connected_) {
-        std::cerr << "Not connected to Stream Handler" << std::endl;
+    std::lock_guard<std::mutex> lock(data_mutex_);
+    
+    auto it = input_data_.find(stream_id);
+    if (it == input_data_.end()) {
+        std::cout << "Stream not found: " << stream_id << std::endl;
         return false;
     }
     
-    // Update local data
-    InputData data;
-    {
-        std::lock_guard<std::mutex> lock(data_mutex_);
-        auto it = input_data_.find(stream_id);
-        if (it == input_data_.end()) {
-            std::cerr << "Stream " << stream_id << " not registered" << std::endl;
-            return false;
-        }
+    it->second.value = value;
+    
+    // Generate timestamp
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    std::ostringstream oss;
+    oss << std::put_time(std::gmtime(&time_t), "%Y-%m-%dT%H:%M:%S");
+    it->second.timestamp = oss.str();
+    
+    // Send update to stream handler
+    bool ws_connected = (ws_client_ && ws_client_->isConnected());
+    if (ws_connected) {
+        json update_msg = {
+            {"type", "physics_simulation"},
+            {"action", "update"},
+            {"simulation_id", simulation_id_},
+            {"stream_id", stream_id},
+            {"data", {
+                {"value", value},
+                {"timestamp", it->second.timestamp}
+            }}
+        };
         
-        it->second.value = value;
-        it->second.timestamp = getCurrentTimestamp();
-        data = it->second;
+        std::cout << "[DEBUG] Sending update: " << stream_id << " = " << value << std::endl;
+        ws_client_->send(update_msg.dump());
     }
     
     // Notify callbacks
-    notifyCallbacks(stream_id, data);
+    notifyCallbacks(stream_id, it->second);
     
-    // Send update to Stream Handler
-    json update = {
-        {"type", "physics_simulation"},
-        {"action", "update"},
-        {"simulation_id", simulation_id_},
-        {"stream_id", stream_id},
-        {"data", {
-            {"value", value},
-            {"timestamp", data.timestamp}
-        }},
-        {"msg-sent-timestamp", getCurrentTimestamp()}
-    };
-    
-    return ws_client_->send(update.dump());
+    return true;
 }
 
 bool InputManager::updateStreamVectorValue(const std::string& stream_id, const std::vector<double>& values) {
-    if (!connected_) {
-        std::cerr << "Not connected to Stream Handler" << std::endl;
+    std::lock_guard<std::mutex> lock(data_mutex_);
+    
+    auto it = input_data_.find(stream_id);
+    if (it == input_data_.end()) {
+        std::cout << "Stream not found: " << stream_id << std::endl;
         return false;
     }
     
-    // Update local data
-    InputData data;
-    {
-        std::lock_guard<std::mutex> lock(data_mutex_);
-        auto it = input_data_.find(stream_id);
-        if (it == input_data_.end()) {
-            std::cerr << "Stream " << stream_id << " not registered" << std::endl;
-            return false;
-        }
+    it->second.vector_value = values;
+    
+    // Generate timestamp
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    std::ostringstream oss;
+    oss << std::put_time(std::gmtime(&time_t), "%Y-%m-%dT%H:%M:%S");
+    it->second.timestamp = oss.str();
+    
+    // Send update to stream handler
+    bool ws_connected = (ws_client_ && ws_client_->isConnected());
+    if (ws_connected) {
+        json update_msg = {
+            {"type", "physics_simulation"},
+            {"action", "update"},
+            {"simulation_id", simulation_id_},
+            {"stream_id", stream_id},
+            {"data", {
+                {"vector_value", values},
+                {"timestamp", it->second.timestamp}
+            }}
+        };
         
-        it->second.vector_value = values;
-        it->second.timestamp = getCurrentTimestamp();
-        data = it->second;
+        ws_client_->send(update_msg.dump());
     }
     
     // Notify callbacks
-    notifyCallbacks(stream_id, data);
+    notifyCallbacks(stream_id, it->second);
     
-    // Send update to Stream Handler
-    json update = {
-        {"type", "physics_simulation"},
-        {"action", "update"},
-        {"simulation_id", simulation_id_},
-        {"stream_id", stream_id},
-        {"data", {
-            {"value", values},
-            {"timestamp", data.timestamp}
-        }},
-        {"msg-sent-timestamp", getCurrentTimestamp()}
-    };
-    
-    return ws_client_->send(update.dump());
+    return true;
 }
 
 double InputManager::getStreamValue(const std::string& stream_id, double default_value) const {
     std::lock_guard<std::mutex> lock(data_mutex_);
+    
     auto it = input_data_.find(stream_id);
-    if (it == input_data_.end()) {
-        return default_value;
+    if (it != input_data_.end()) {
+        return it->second.value;
     }
     
-    return it->second.value;
+    return default_value;
 }
 
 std::vector<double> InputManager::getStreamVectorValue(const std::string& stream_id) const {
     std::lock_guard<std::mutex> lock(data_mutex_);
+    
     auto it = input_data_.find(stream_id);
-    if (it == input_data_.end()) {
-        return {};
+    if (it != input_data_.end()) {
+        return it->second.vector_value;
     }
     
-    return it->second.vector_value;
+    return {};
 }
 
 bool InputManager::registerCallback(const std::string& stream_id, InputCallback callback) {
     std::lock_guard<std::mutex> lock(callback_mutex_);
+    
     callbacks_[stream_id].push_back(callback);
+    
+    std::cout << "Registered callback for stream: " << stream_id << std::endl;
     return true;
 }
 
 bool InputManager::sendCommand(const std::string& command, const std::map<std::string, std::string>& params) {
     if (!connected_) {
-        std::cerr << "Not connected to Stream Handler" << std::endl;
+        std::cout << "Not connected to stream handler" << std::endl;
         return false;
     }
     
-    json params_json = json::object();
-    for (const auto& [key, value] : params) {
-        params_json[key] = value;
-    }
-    
-    json command_json = {
+    json command_msg = {
         {"type", "physics_simulation"},
         {"action", "control"},
         {"simulation_id", simulation_id_},
         {"command", command},
-        {"params", params_json},
-        {"msg-sent-timestamp", getCurrentTimestamp()}
+        {"params", params}
     };
     
-    return ws_client_->send(command_json.dump());
+    return ws_client_->send(command_msg.dump());
 }
 
 bool InputManager::updateStatus(const std::string& status) {
     if (!connected_) {
-        std::cerr << "Not connected to Stream Handler" << std::endl;
+        std::cout << "Not connected to stream handler" << std::endl;
         return false;
     }
     
-    json status_json = {
+    json status_msg = {
         {"type", "physics_simulation"},
         {"action", "status"},
         {"simulation_id", simulation_id_},
-        {"status", status},
-        {"msg-sent-timestamp", getCurrentTimestamp()}
+        {"status", status}
     };
     
-    return ws_client_->send(status_json.dump());
+    return ws_client_->send(status_msg.dump());
 }
 
 void InputManager::processMessage(const std::string& message) {
     try {
-        json data = json::parse(message);
+        json msg = json::parse(message);
         
-        // Handle physics simulation messages
-        if (data["type"] == "physics_simulation") {
-            std::string action = data["action"];
+        std::string type = msg.value("type", "");
+        
+        if (type == "physics_simulation") {
+            std::string action = msg.value("action", "");
+            std::string sim_id = msg.value("simulation_id", "");
+            
+            // Only process messages for our simulation
+            if (sim_id != simulation_id_) {
+                return;
+            }
             
             if (action == "control") {
-                // Handle control commands
-                std::string command = data["command"];
-                json params = data["params"];
-                
+                std::string command = msg.value("command", "");
                 std::cout << "Received command: " << command << std::endl;
                 
-                // Process command (to be implemented by derived classes)
+                // Handle simulation control commands
+                if (command == "start") {
+                    updateStatus("running");
+                } else if (command == "pause") {
+                    updateStatus("paused");
+                } else if (command == "stop") {
+                    updateStatus("stopped");
+                } else if (command == "reset") {
+                    updateStatus("reset");
+                }
+            } else if (action == "parameter_update") {
+                // Handle parameter updates from UI
+                std::string stream_id = msg.value("stream_id", "");
+                if (msg.contains("data") && msg["data"].contains("value")) {
+                    double value = msg["data"]["value"];
+                    
+                    std::lock_guard<std::mutex> lock(data_mutex_);
+                    auto it = input_data_.find(stream_id);
+                    if (it != input_data_.end()) {
+                        it->second.value = value;
+                        notifyCallbacks(stream_id, it->second);
+                        std::cout << "Updated parameter " << stream_id << " = " << value << std::endl;
+                    }
+                }
             }
         }
     } catch (const std::exception& e) {
-        std::cerr << "Error processing message: " << e.what() << std::endl;
+        std::cout << "Error processing message: " << e.what() << std::endl;
     }
 }
 
 void InputManager::messageLoop() {
     while (running_) {
-        if (!connected_) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            continue;
-        }
-        
-        std::string message;
-        if (ws_client_->receive(message)) {
-            processMessage(message);
-        } else {
-            connected_ = false;
-            std::cerr << "Connection to Stream Handler lost" << std::endl;
-            
-            // Try to reconnect
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            if (connect()) {
-                std::cout << "Reconnected to Stream Handler" << std::endl;
-            }
-        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        // Message processing is handled by websocketpp callbacks
     }
 }
 
 void InputManager::notifyCallbacks(const std::string& stream_id, const InputData& data) {
     std::lock_guard<std::mutex> lock(callback_mutex_);
+    
     auto it = callbacks_.find(stream_id);
     if (it != callbacks_.end()) {
         for (const auto& callback : it->second) {
-            callback(data);
+            try {
+                callback(data);
+            } catch (const std::exception& e) {
+                std::cout << "Error in callback for stream " << stream_id << ": " << e.what() << std::endl;
+            }
         }
     }
-}
-
-// Helper function to get current timestamp
-std::string getCurrentTimestamp() {
-    auto now = std::chrono::system_clock::now();
-    auto now_c = std::chrono::system_clock::to_time_t(now);
-    auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
-    
-    std::stringstream ss;
-    ss << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S");
-    ss << '.' << std::setfill('0') << std::setw(3) << now_ms.count();
-    
-    return ss.str();
 }
 
 } // namespace parsec

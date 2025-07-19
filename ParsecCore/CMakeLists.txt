@@ -71,6 +71,14 @@ endif()
 add_executable(input_manager_example ../examples/input_manager_example.cpp)
 target_link_libraries(input_manager_example PRIVATE ParsecCore)
 
+add_executable(minimal_websocket_test ../examples/minimal_websocket_test.cpp)
+target_link_libraries(minimal_websocket_test PRIVATE ParsecCore)
+
+# Platform-specific libraries for minimal test
+if(WIN32)
+    target_link_libraries(minimal_websocket_test PRIVATE ws2_32)
+endif()
+
 # Install
 install(TARGETS ParsecCore
         LIBRARY DESTINATION lib

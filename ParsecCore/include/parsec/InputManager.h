@@ -138,6 +138,13 @@ public:
     bool updateStatus(const std::string& status);
     
     /**
+     * @brief Send a test message to the Stream Handler
+     * @param message Test message to send
+     * @return True if message was sent successfully
+     */
+    bool sendTestMessage(const std::string& message);
+    
+    /**
      * @brief Process incoming messages
      * @param message JSON message string
      */
@@ -154,6 +161,11 @@ public:
      * @return Simulation ID
      */
     std::string getSimulationId() const { return simulation_id_; }
+    
+    /**
+     * @brief Called when WebSocket connection is established
+     */
+    void onWebSocketConnected();
 
 private:
     // WebSocket client implementation (platform-specific)

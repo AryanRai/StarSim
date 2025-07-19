@@ -3,8 +3,11 @@
 #include <thread>
 #include <chrono>
 #include <cmath>
+#include <ctime>
+#include <nlohmann/json.hpp>
 
 using namespace parsec;
+using json = nlohmann::json;
 
 int main() {
     std::cout << "StarSim Physics Simulation Demo" << std::endl;
@@ -24,6 +27,25 @@ int main() {
     } else {
         std::cout << "Failed to connect to Stream Handler. Continuing in offline mode..." << std::endl;
     }
+    
+    // Send test messages to verify Stream Handler is receiving them
+    std::cout << "\n=== Testing WebSocket Communication ===" << std::endl;
+    for (int i = 0; i < 5; i++) {
+        json test_msg = {
+            {"type", "physics_simulation"},
+            {"action", "test"},
+            {"simulation_id", "spring_mass_system"},
+            {"test_number", i + 1},
+            {"message", "Hello from StarSim test!"},
+            {"timestamp", std::time(nullptr)}
+        };
+        
+        bool sent = input_manager.sendTestMessage(test_msg.dump());
+        std::cout << "Test message " << (i + 1) << " sent: " << (sent ? "SUCCESS" : "FAILED") << std::endl;
+        
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+    std::cout << "=== Test Messages Complete ===\n" << std::endl;
     
     // Register physics streams
     input_manager.registerStream("position", "Position", "float", "m");

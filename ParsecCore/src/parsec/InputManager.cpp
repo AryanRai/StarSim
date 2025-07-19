@@ -41,6 +41,11 @@ public:
             };
             
             client_.send(hdl, subscribe_msg.dump(), websocketpp::frame::opcode::text);
+            
+            // Notify the manager that connection is ready
+            if (manager_) {
+                manager_->onWebSocketConnected();
+            }
         });
         
         client_.set_close_handler([this](connection_hdl hdl) {
@@ -167,19 +172,14 @@ bool InputManager::connect() {
         return false;
     }
     
-    // Wait for WebSocket connection to be established
-    int wait_attempts = 0;
-    std::cout << "[DEBUG] Starting wait loop for WebSocket connection..." << std::endl;
-    while (!ws_client_->isConnected() && wait_attempts < 50) {  // Wait up to 5 seconds
-        std::cout << "[DEBUG] Wait attempt " << wait_attempts << ", isConnected=" << ws_client_->isConnected() << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        wait_attempts++;
-    }
-    
+    // The WebSocket connection should already be established by initialize()
+    // Just verify and set our connection status
     connected_ = ws_client_->isConnected();
-    std::cout << "[DEBUG] InputManager::connect() - wait_attempts=" << wait_attempts << ", ws_client_->isConnected()=" << ws_client_->isConnected() << ", connected_=" << connected_ << std::endl;
+    std::cout << "[DEBUG] InputManager::connect() - ws_client_->isConnected()=" << ws_client_->isConnected() << ", connected_=" << connected_ << std::endl;
     
     if (connected_) {
+        std::cout << "InputManager connected successfully!" << std::endl;
+        
         // Register this simulation with the stream handler
         json register_msg = {
             {"type", "physics_simulation"},
@@ -191,11 +191,14 @@ bool InputManager::connect() {
             }}
         };
         
-        ws_client_->send(register_msg.dump());
+        bool sent = ws_client_->send(register_msg.dump());
+        std::cout << "[DEBUG] Simulation registration sent: " << sent << std::endl;
         
         // Start message processing
         running_ = true;
         message_thread_ = std::thread(&InputManager::messageLoop, this);
+    } else {
+        std::cout << "InputManager connection failed - WebSocket not connected" << std::endl;
     }
     
     return connected_;
@@ -242,7 +245,7 @@ bool InputManager::registerStream(const std::string& stream_id,
     // Send stream registration to stream handler
     bool ws_connected = (ws_client_ && ws_client_->isConnected());
     std::cout << "[DEBUG] Attempting to send stream registration. connected_=" << connected_ << ", ws_connected=" << ws_connected << std::endl;
-    if (ws_connected) {
+    if (connected_ && ws_connected) {
         json stream_msg = {
             {"type", "physics_simulation"},
             {"action", "register_stream"},
@@ -289,7 +292,7 @@ bool InputManager::updateStreamValue(const std::string& stream_id, double value)
     
     // Send update to stream handler
     bool ws_connected = (ws_client_ && ws_client_->isConnected());
-    if (ws_connected) {
+    if (connected_ && ws_connected) {
         json update_msg = {
             {"type", "physics_simulation"},
             {"action", "update"},
@@ -331,7 +334,7 @@ bool InputManager::updateStreamVectorValue(const std::string& stream_id, const s
     
     // Send update to stream handler
     bool ws_connected = (ws_client_ && ws_client_->isConnected());
-    if (ws_connected) {
+    if (connected_ && ws_connected) {
         json update_msg = {
             {"type", "physics_simulation"},
             {"action", "update"},
@@ -416,6 +419,21 @@ bool InputManager::updateStatus(const std::string& status) {
     return ws_client_->send(status_msg.dump());
 }
 
+bool InputManager::sendTestMessage(const std::string& message) {
+    bool ws_connected = (ws_client_ && ws_client_->isConnected());
+    std::cout << "[DEBUG] sendTestMessage called. ws_connected=" << ws_connected << std::endl;
+    
+    if (ws_connected) {
+        std::cout << "[DEBUG] Sending test message: " << message << std::endl;
+        bool sent = ws_client_->send(message);
+        std::cout << "[DEBUG] Test message sent: " << sent << std::endl;
+        return sent;
+    } else {
+        std::cout << "[DEBUG] Not connected, cannot send test message" << std::endl;
+        return false;
+    }
+}
+
 void InputManager::processMessage(const std::string& message) {
     try {
         json msg = json::parse(message);
@@ -471,6 +489,11 @@ void InputManager::messageLoop() {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         // Message processing is handled by websocketpp callbacks
     }
+}
+
+void InputManager::onWebSocketConnected() {
+    std::cout << "[DEBUG] InputManager::onWebSocketConnected() called" << std::endl;
+    connected_ = true;
 }
 
 void InputManager::notifyCallbacks(const std::string& stream_id, const InputData& data) {

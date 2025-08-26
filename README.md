@@ -1,5 +1,12 @@
-# StarSim
-A complete physics engine consisting of tools, models, algorithms and software for real-world physics simulations and real-time calculations based on live, past and predicted data.
+# StarSim - Real-Time Physics Simulation Engine
+
+[![Integration](https://img.shields.io/badge/Comms-Integration-purple)](https://github.com/AryanRai/Comms)
+[![Engine](https://img.shields.io/badge/ParsecCore-C++-blue)](ParsecCore/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
+> **A complete physics simulation and computation engine with real-time capabilities, featuring a portable C++ backend (ParsecCore) and seamless integration with Comms Alpha v3.0 for visualization and hardware interfacing.**
+
+StarSim provides a comprehensive ecosystem for physics simulation, from embedded microcontroller applications to desktop visualization, with real-time data processing, machine learning integration, and hardware-in-the-loop capabilities.
 
 ## Project Structure
 
@@ -207,13 +214,260 @@ For ML Core functionality and configuration, see the [ML README](./ParsecCore/ML
 
 ---
 
-## StarSim Framework (Frontend & Orchestration)
+## 🌟 Comms Alpha v3.0 Integration
 
-*(TODO: Describe the higher-level StarSim application, UI, visualization, model building tools, and how it interacts with ParsecCore and potentially Comms components)*
+StarSim leverages the proven architecture of **Comms Alpha v3.0** to accelerate development while maintaining independence. This integration provides a complete frontend, communication layer, and hardware interfacing system.
 
-## Comms Integration
+### Integration Architecture
 
-*(TODO: Detail how StarSim plans to integrate with components from the Comms Alpha v2.0 project for UI (AriesUI), data streaming (Stream Handler), hardware I/O (Engine), and instance management (HyperThreader), including the 'locked mode' concept)*
+```mermaid
+graph TB
+    subgraph "StarSim Frontend (AriesUI Extended)"
+        A[Physics Model Builder] --> B[Vector Field Visualizer]
+        B --> C[3D Physics Renderer]
+        C --> D[Simulation Timeline]
+        D --> E[Real-time Charts]
+    end
+    
+    subgraph "Communication Layer (Stream Handler)"
+        F[Physics Data Streams] --> G[Simulation Control]
+        G --> H[Hardware I/O Streams]
+        H --> I[ML Model Streams]
+    end
+    
+    subgraph "StarSim Backend (ParsecCore)"
+        J[Solver Core] --> K[Physics Models]
+        K --> L[ML Integration]
+        L --> M[Hardware Interface]
+    end
+    
+    A <--> F
+    F <--> J
+    N[HyperThreader] --> A
+    N --> F
+    N --> J
+```
+
+### Key Integration Components
+
+The integration between StarSim and Comms Alpha v3.0 is now implemented with these key components:
+
+1. **InputManager (C++)**: A new C++ class that connects ParsecCore simulations to the Stream Handler WebSocket server, enabling real-time data exchange between the physics engine and the UI.
+
+2. **Physics-specific Stream Protocol**: An extension to the Stream Handler protocol that supports physics simulation data, including vectors, matrices, and specialized physics quantities.
+
+3. **AriesUI Physics Widgets**: A set of specialized widgets for physics visualization:
+   - **PhysicsValueMonitor**: Displays physics values with units and trend indicators
+   - **PhysicsChart**: Real-time charts for physics data visualization
+   - **PhysicsVectorField**: 2D vector field visualization for forces, velocities, etc.
+   - **PhysicsControlPanel**: Interface for controlling simulation parameters
+
+### Example Integration
+
+```cpp
+// C++ example using InputManager
+#include "parsec/InputManager.h"
+
+int main() {
+    // Create input manager for simulation
+    parsec::InputManager input_manager("spring_mass_system");
+    input_manager.initialize("ws://localhost:3000");
+    
+    // Register streams
+    input_manager.registerStream("position", "Position", "float", "m");
+    input_manager.registerStream("velocity", "Velocity", "float", "m/s");
+    
+    // Update simulation status
+    input_manager.updateStatus("running");
+    
+    // Simulation loop
+    for (int i = 0; i < 1000; ++i) {
+        // Update simulation
+        position += velocity * dt;
+        velocity += acceleration * dt;
+        
+        // Send to Stream Handler
+        input_manager.updateStreamValue("position", position);
+        input_manager.updateStreamValue("velocity", velocity);
+        
+        // Sleep to control simulation speed
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    
+    return 0;
+}
+```
+
+For detailed integration documentation, see [INTEGRATION.md](INTEGRATION.md).
+
+### Component Integration Map
+
+| Comms Component | StarSim Integration | Implementation |
+|----------------|-------------------|----------------|
+| **AriesUI** | StarSim Frontend | Extended with physics-specific widgets and 3D visualization |
+| **Stream Handler** | Orchestration Layer | Real-time data flow between frontend and ParsecCore |
+| **Engine + Dynamic Modules** | I/O Manager | Hardware interfacing for sensors, actuators, and embedded devices |
+| **HyperThreader** | System Orchestrator | Manage StarSim instances, debugging, and performance monitoring |
+
+### StarSim-Specific Extensions
+
+#### 🎯 Physics Visualization Widgets (AriesMods)
+```typescript
+// Physics-specific AriesMods widgets
+ariesMods/
+├── physics/
+│   ├── VectorFieldVisualizer.tsx    # Force/velocity field display
+│   ├── PhysicsModelBuilder.tsx      # Drag-and-drop system builder
+│   ├── SimulationTimeline.tsx       # Time scrubbing control
+│   ├── 3DPhysicsRenderer.tsx        # Three.js 3D visualization
+│   ├── SolverMonitor.tsx            # Real-time solver performance
+│   └── EquationEditor.tsx           # Mathematical equation input
+```
+
+#### 🔄 Physics Data Streams
+```json
+{
+  "type": "physics_simulation",
+  "status": "active",
+  "data": {
+    "simulation_id": "drone_flight_dynamics",
+    "solver_info": {
+      "method": "RK4",
+      "timestep": 0.001,
+      "convergence": "stable"
+    },
+    "streams": {
+      "position": {
+        "stream_id": 201,
+        "name": "Drone Position",
+        "datatype": "vector3",
+        "unit": "m",
+        "value": [1.2, 0.8, 2.1],
+        "metadata": {
+          "coordinate_system": "world",
+          "reference_frame": "NED"
+        }
+      },
+      "forces": {
+        "stream_id": 202,
+        "name": "Applied Forces",
+        "datatype": "vector3",
+        "unit": "N",
+        "value": [0.1, 0.0, -9.81]
+      }
+    }
+  }
+}
+```
+
+#### 🎮 Headless Mode for Embedded Systems
+```cpp
+// Headless StarSim configuration
+{
+  "headless_mode": true,
+  "ui_profile": "drone_control_locked",
+  "output_streams": ["position", "velocity", "attitude"],
+  "hardware_interfaces": {
+    "imu": "/dev/ttyUSB0",
+    "motors": "pwm_channels_1_4"
+  },
+  "animation_config": {
+    "3d_model": "drone_mesh.obj",
+    "update_rate": 30
+  }
+}
+```
+
+### Development Workflow
+
+#### Phase 1: Core Integration (Current)
+- ✅ Git submodule setup
+- ✅ Integration branch structure
+- 🚧 Stream Handler physics data extensions
+- 🚧 Basic physics AriesMods widgets
+- 📋 ParsecCore communication protocol
+
+#### Phase 2: Advanced Features
+- 📋 3D visualization with Three.js
+- 📋 Hardware-in-the-loop simulation
+- 📋 ML model integration streams
+- 📋 Multi-physics domain support
+
+#### Phase 3: Production Ready
+- 📋 Headless mode for embedded systems
+- 📋 Performance optimization
+- 📋 Real-world validation
+- 📋 Documentation and examples
+
+### Quick Start with Comms Integration
+
+```bash
+# From Comms repository root
+cd int/StarSim
+
+# Build ParsecCore
+cd ParsecCore && mkdir build && cd build
+cmake .. && cmake --build .
+
+# Test ParsecCore
+ctest
+
+# Start integrated system (from Comms root)
+cd ../../../
+python HyperThreader.py  # Now includes StarSim management
+```
+
+### Stream Integration Examples
+
+#### Physics Simulation Stream
+```python
+# Engine Dynamic Module for StarSim
+class StarSimModule:
+    def __init__(self):
+        self.streams = {
+            "position": Stream(301, "Position", "vector3", "m"),
+            "velocity": Stream(302, "Velocity", "vector3", "m/s"),
+            "acceleration": Stream(303, "Acceleration", "vector3", "m/s²")
+        }
+    
+    async def update_streams_forever(self):
+        while True:
+            # Get data from ParsecCore
+            sim_data = self.parsec_core.getCurrentState()
+            self.streams["position"].update_value(sim_data.position)
+            self.streams["velocity"].update_value(sim_data.velocity)
+            await asyncio.sleep(0.001)  # 1ms updates for real-time
+```
+
+#### AriesUI Physics Widget
+```typescript
+// StarSim-specific widget
+const PhysicsVectorField: React.FC<AriesModProps> = ({
+  title,
+  data,
+  config
+}) => {
+  const position = useCommsStream('starsim.position')
+  const velocity = useCommsStream('starsim.velocity')
+  
+  return (
+    <Card className="w-full h-full">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Canvas>
+          <VectorField 
+            position={position.value}
+            velocity={velocity.value}
+            scale={config.scale}
+          />
+        </Canvas>
+      </CardContent>
+    </Card>
+  )
+}
+```
 
 ## Quick Start
 
